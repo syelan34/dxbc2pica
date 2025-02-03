@@ -28,7 +28,7 @@ def parse(line) -> str | list[str]:
                 for op in opbase
                 if op in _possibleoutputs and not _setoutputused(op)
             ] + 
-            _lineparser[opcode[0]](opcode, operands)
+            _instr[opcode[0]](opcode, operands)
         )
     )
 
@@ -116,19 +116,34 @@ def _type1u(opcode, operands) -> list[str]:
     return [f'{opcode[0]} {operands[0]}, {operands[1]}\n']
 
 def _parseif(opcode, operands) -> list[str]:
-    return [_comment(f'{opcode} {operands}')]
+    if len(opcode) == 1: 
+        if 'p' in operands[0]: return [f'ifc {operands[0].replace('p0', 'cmp')}\n']
+        else: return [f'ifu {operands[0]}\n']
+    return [
+        f'cmp {operands[0]}, {opcode[1]}, {opcode[1]}, {operands[1]}\n',
+        'ifc cmp.x\n'
+    ]
     
 def _parsemad(opcode, operands) -> list[str]:
     numconstants = sum(['c' in op for op in operands])
     # if there are no constants or there is a uniform in either src2 or src3 do nothing
     if sum(['c' in op for op in operands]) == 0 or (numconstants == 1 and 'c' not in operands[1]): return [f'mad {operands[0]}, {operands[1]}, {operands[2]}, {operands[3]}\n']
-    return _lineparser['mul'](['mul'], operands) + _lineparser['add'](['add'], [operands[0], operands[0], operands[3]])
+    return _instr['mul'](['mul'], operands) + _instr['add'](['add'], [operands[0], operands[0], operands[3]])
 
 def _parsesetp(opcode, operands) -> list[str]:
     return [_comment(f'{opcode} {operands}')]
 
 def _parsesgn(opcode, operands) -> list[str]:
-    return [_comment(f'{opcode} {operands}')]
+    # since there's no native instruction this just emulates it
+    # add r0, r0, -r0
+    # sge r2, r1, r0
+    # sge r3, -r1, r0
+    # add r0, r2, -r3
+    
+    # in case the operand is already negated, just flip the signs
+    if '-' in operands[1]:
+        return _instr['sub'](['sub'], [operands[0], operands[0], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1].replace('-', ''), operands[0]]) + _instr['sub'](['sub'], [operands[0], operands[3], operands[2]])
+    return _instr['sub'](['sub'], [operands[0], operands[0], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1], operands[0]]) + _instr['sge'](['sge'], [operands[2], '-' + operands[1], operands[0]]) + _instr['sub'](['sub'], [operands[0], operands[2], operands[3]])
     
 def _setoutputused(output: str) -> bool:
     if output in _invalidoutputs: 
@@ -138,7 +153,7 @@ def _setoutputused(output: str) -> bool:
     return used
 
 
-_lineparser: dict[str, Callable[[list[str], list[str]], list[str]]] = {
+_instr: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     'abs': lambda opcode, operands: [f'max {operands[0]}, -{operands[0]}\n'],
     'add': _type1,
     'break': _parsebreak,
@@ -159,7 +174,7 @@ _lineparser: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     'endrep': lambda opcode, operands: [f'.end{output.dectab()}\n'],
     'exp': lambda opcode, operands: [f'ex2 {operands[0]}, {operands[1]}\n'],
     'expp': lambda opcode, operands: [f'ex2 {operands[0]}, {operands[1]}\n'],
-    'frc': lambda opcode, operands: _type1u(['flr'], operands) + _lineparser['sub'](['sub'], [operands[0], operands[1], operands[0]]),
+    'frc': lambda opcode, operands: _type1u(['flr'], operands) + _instr['sub'](['sub'], [operands[0], operands[1], operands[0]]),
     'if': _parseif,
     'label': lambda opcode, operands: [f' {operands[0]}\n'],
     # 'lit': lambda opcode, operands: f'max {operands[0]}.x, {operands[1]}\n',
@@ -171,7 +186,7 @@ _lineparser: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     'mova': _type1u,
     'mul': _type1,
     'nop': lambda opcode, operands: ['nop\n'],
-    'nrm': lambda opcode, operands: _lineparser['dp4'](['dp4'], [operands[0], operands[1], operands[1]]) + _lineparser['rsq'](['rsq'], [operands[0], operands[0]]) + _lineparser['mul'](['mul'], [operands[0], operands[1], operands[0]]),
+    'nrm': lambda opcode, operands: _instr['dp4'](['dp4'], [operands[0], operands[1], operands[1]]) + _instr['rsq'](['rsq'], [operands[0], operands[0]]) + _instr['mul'](['mul'], [operands[0], operands[1], operands[0]]),
     'rep': lambda opcode, operands: [f'for {operands[0]}{output.inctab_after()}\n'],
     'ret': lambda opcode, operands: ['jmp'], # incomplete instruction, must be followed by a label
     'rsq': _type1u,
@@ -180,7 +195,7 @@ _lineparser: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     'sgn': _parsesgn,
     'sincos': lambda opcode, operands: (_ for _ in ()).throw(Exception('sincos not supported')),
     'slt': _type1i,
-    'sub': lambda opcode, operands: _lineparser['add'](['add'], [operands[0], operands[1], '-' + operands[2]]),
+    'sub': lambda opcode, operands: _instr['add'](['add'], [operands[0], operands[1], '-' + operands[2]]),
     'texldl': lambda opcode, operands: (_ for _ in ()).throw(Exception('texldl not supported')),
     'vs': lambda opcode, operands: [_comment(f'version {operands[0]}')],
 }
