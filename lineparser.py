@@ -140,10 +140,10 @@ def _parsesgn(opcode, operands) -> list[str]:
     # sge r3, -r1, r0
     # add r0, r2, -r3
     
-    # in case the operand is already negated, just flip the signs
+    # in case the operand is already negated, just flip the sign
     if '-' in operands[1]:
-        return _instr['sub'](['sub'], [operands[0], operands[0], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1].replace('-', ''), operands[0]]) + _instr['sub'](['sub'], [operands[0], operands[3], operands[2]])
-    return _instr['sub'](['sub'], [operands[0], operands[0], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1], operands[0]]) + _instr['sge'](['sge'], [operands[2], '-' + operands[1], operands[0]]) + _instr['sub'](['sub'], [operands[0], operands[2], operands[3]])
+        return _instr['sub'](['sub'], [operands[0], operands[0], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1], operands[0]]) + _instr['sge'](['sge'], [operands[3], operands[1].replace('-', ''), operands[0]]) + _instr['sub'](['sub'], [operands[0], operands[2], operands[3]])
+    return _instr['sub'](['sub'], [operands[0], operands[0], operands[0]]) + _instr['sge'](['sge'], [operands[2], operands[1], operands[0]]) + _instr['sge'](['sge'], [operands[3], '-' + operands[1], operands[0]]) + _instr['sub'](['sub'], [operands[0], operands[2], operands[3]])
     
 def _setoutputused(output: str) -> bool:
     if output in _invalidoutputs: 
@@ -195,7 +195,7 @@ _instr: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     'sgn': _parsesgn,
     'sincos': lambda opcode, operands: (_ for _ in ()).throw(Exception('sincos not supported')),
     'slt': _type1i,
-    'sub': lambda opcode, operands: _instr['add'](['add'], [operands[0], operands[1], '-' + operands[2]]),
+    'sub': lambda opcode, operands: _instr['add'](['add'], [operands[0], operands[1], operands[2].replace('-', '')]) if '-' in operands[2] else _instr['add'](['add'], [operands[0], operands[1], '-' + operands[2]]),
     'texldl': lambda opcode, operands: (_ for _ in ()).throw(Exception('texldl not supported')),
     'vs': lambda opcode, operands: [_comment(f'version {operands[0]}')],
 }

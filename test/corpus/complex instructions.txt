@@ -35,23 +35,6 @@ mov r0, c1
 mul r0, c2, r0
 add r0, c3, r0
 ===============
-nrm instruction -- scratch register
-===============
-nrm r0, r1
----------------
-dp4 r0, r1, r1
-rsq r0, r0
-mul r0, r1, r0
-===============
-nrm instruction -- uniform register
-===============
-nrm r0, c1
----------------
-mov r0, c1
-dp4 r0, c1, r0
-rsq r0, r0
-mul r0, c1, r0
-===============
 sub instruction -- scratch register
 ===============
 sub r0, r1, r2
@@ -79,10 +62,3 @@ frc r0, r1
 ---------------
 flr r0, r1
 add r0, r1, -r0
-===============
-frc instruction -- uniform register
-===============
-frc r0, c1
----------------
-flr r0, c1
-add r0, c1, -r0

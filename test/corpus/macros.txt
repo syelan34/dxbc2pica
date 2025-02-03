@@ -1,0 +1,52 @@
+===============
+nrm macro -- scratch register
+===============
+nrm r0, r1
+---------------
+dp4 r0, r1, r1
+rsq r0, r0
+mul r0, r1, r0
+===============
+nrm macro -- uniform register
+===============
+nrm r0, c1
+---------------
+mov r0, c1
+dp4 r0, c1, r0
+rsq r0, r0
+mul r0, c1, r0
+===============
+frc instruction -- uniform register
+===============
+frc r0, c1
+---------------
+flr r0, c1
+add r0, c1, -r0
+===============
+sgn instruction -- scratch register
+===============
+sgn r0, r1, r2, r3
+sgn r0, -r1, r2, r3
+---------------
+add r0, r0, -r0
+sge r2, r1, r0
+sge r3, -r1, r0
+add r0, r2, -r3
+add r0, r0, -r0
+sge r2, -r1, r0
+sge r3, r1, r0
+add r0, r2, -r3
+===============
+sgn instruction -- uniform register
+===============
+sgn r0, c1, r2, r3
+sgn r0, -c1, r2, r3
+---------------
+add r0, r0, -r0
+sge r2, c1, r0
+sge r3, -c1, r0
+add r0, r2, -r3
+add r0, r0, -r0
+sge r2, -c1, r0
+sge r3, c1, r0
+add r0, r2, -r3
