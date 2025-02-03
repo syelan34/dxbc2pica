@@ -1,0 +1,5 @@
+*.pica
+*.shbin
+__pycache__/
+.ropeproject/
+*.dxbc

@@ -1,0 +1,16 @@
+=======================
+Output semantics -- vs 1_1 to 2_x
+=======================
+mov oPos.xyz, v0
+mov oT0.st, v0
+-----------------------
+.out oPos position
+mov oPos.xyz, v0
+.out oT0 texcoord0
+mov oT0.st, v0
+=======================
+Output semantics -- vs 3_0
+=======================
+dcl_position o0
+-----------------------
+.out - position o0
