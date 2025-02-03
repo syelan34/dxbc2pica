@@ -16,9 +16,9 @@ def get_input():
     parser.add_argument('-i','--input', type=str, help='Input file')
     parser.add_argument('-o','--output', type=str, help='Output file')
     args = parser.parse_args()
-    # print(args)
     _test = args.test
     _filter = args.filter
+    if args.test: return
     # set input to either stdin or input file depending on what was passed
     if args.input is not None:
         sys.stdin = open(args.input, 'r')
@@ -28,10 +28,10 @@ def get_input():
         sys.stdout = open(args.output, 'w')
 
 if __name__ == '__main__':
-    # steps:
+    # future steps:
     # - get input
-    # - scan for meta info
-    # - add meta info stuff
+    # - scan for meta info [todo]
+    # - add meta info stuff [todo]
     # - go through instructions line by line
     get_input()
     if _test:
