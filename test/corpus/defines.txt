@@ -1,0 +1,34 @@
+====================
+Input declaration
+====================
+dcl_color v1
+--------------------
+.in color v1
+====================
+Output declaration
+====================
+dcl_position o0
+--------------------
+.out - position o0
+===================
+Uniform declaration
+===================
+// Registers:
+//
+//   Name                    Reg   Size
+//   ----------------------- ----- ----
+//   testconstant            i0       1
+//   WorldViewProjection     c0       4
+//   SomeOtherTransformation c4       2
+------------------
+.ivec testconstant
+.fvec WorldViewProjection[4]
+.fvec SomeOTherTransformation[2]
+===================
+Constant vector declaration
+===================
+def c4, 1, 0, 0, 0
+defi i0, 255, 0, 0, 0
+-------------------
+.constf c4(1, 0, 0, 0)
+.consti i0(255, 0, 0, 0)

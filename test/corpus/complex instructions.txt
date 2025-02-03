@@ -1,0 +1,88 @@
+===============
+mad instruction -- no constants
+===============
+mad r0, r1, r2, r3
+---------------
+mad r0, r1, r2, r3
+===============
+mad instruction -- constant src2
+===============
+mad r0, r1, c2, r3
+---------------
+mad r0, r1, c2, r3
+===============
+mad instruction -- constant src3
+===============
+mad r0, r1, r2, c3
+---------------
+mad r0, r1, r2, c3
+===============
+mad instruction -- more than one constant
+===============
+mad r0, r1, c2, c3
+
+mad r0, c1, r2, c3
+
+mad r0, c1, c2, c3
+---------------
+mul r0, c2, r1
+add r0, c3, r0
+
+mul r0, c1, r2
+add r0, c3, r0
+
+mov r0, c1
+mul r0, c2, r0
+add r0, c3, r0
+===============
+nrm instruction -- scratch register
+===============
+nrm r0, r1
+---------------
+dp4 r0, r1, r1
+rsq r0, r0
+mul r0, r1, r0
+===============
+nrm instruction -- uniform register
+===============
+nrm r0, c1
+---------------
+mov r0, c1
+dp4 r0, c1, r0
+rsq r0, r0
+mul r0, c1, r0
+===============
+sub instruction -- scratch register
+===============
+sub r0, r1, r2
+---------------
+add r0, r1, -r2
+===============
+sub instruction -- one uniform register
+===============
+sub r0, c1, r2
+sub r0, r1, c2
+---------------
+add r0, c1, -r2
+add r0, -c2, r1
+===============
+sub instruction -- two uniform registers
+===============
+sub r0, c1, c2
+---------------
+mov r0, c1
+add r0, -c2, r0
+===============
+frc instruction -- scratch register
+===============
+frc r0, r1
+---------------
+flr r0, r1
+add r0, r1, -r0
+===============
+frc instruction -- uniform register
+===============
+frc r0, c1
+---------------
+flr r0, c1
+add r0, c1, -r0
