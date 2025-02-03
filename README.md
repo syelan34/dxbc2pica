@@ -1,7 +1,7 @@
 # DirectX bytecode to pica200 assembly converter
 
-[!WARNING]
-Uniforms are not declared due to how picasso allocates declared registers, so you need to use the register IDs directly
+> [!WARNING]
+> Uniforms are not declared due to how picasso allocates declared registers, so you need to use the register IDs directly
 
 Currently experimental, generally functional enough to be used on simple shaders. 
 
