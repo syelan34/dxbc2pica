@@ -1,6 +1,7 @@
 # DirectX bytecode to pica200 assembly converter
 
-!!!WARNING: uniforms are not declared due to how picasso allocates declared registers, so you need to use the register IDs directly!!!
+[!WARNING]
+Uniforms are not declared due to how picasso allocates declared registers, so you need to use the register IDs directly
 
 Currently experimental, generally functional enough to be used on simple shaders. 
 
@@ -16,7 +17,7 @@ Currently mostly supports up to vs3_0 with some important differences:
 - Fixes register names
 - Converts some macros to actual instructions when possible
 
-Usage:
+### Usage:
 ```
 python3 converter.py [-i, --input INPUT] [-o, --output OUTPUT]
 ```
