@@ -28,6 +28,11 @@ def get_input():
         sys.stdout = open(args.output, 'w')
 
 if __name__ == '__main__':
+    # steps:
+    # - get input
+    # - scan for meta info
+    # - add meta info stuff
+    # - go through instructions line by line
     get_input()
     if _test:
         test.runtests(_filter)
