@@ -52,3 +52,12 @@ slt r2, c1, -r2
 mov r3, -c1
 slt r3, -c1, -r3
 add r0, r2, -r3
+===============
+pow macro -- scratch register
+===============
+pow r0, r1, r2
+---------------
+max r0, r1, -r1
+lg2 r0, r0
+mul r0, r2, r0
+ex2 r0, r0

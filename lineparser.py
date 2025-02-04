@@ -142,9 +142,19 @@ def _setoutputused(output: str) -> bool:
     _outputsused[output] = True
     return used
 
+# yet to implement:
+# lit - vs
+# m3x2 - vs (generally unused, low prio)
+# m3x3 - vs (generally unused, low prio)
+# m3x4 - vs (generally unused, low prio)
+# m4x3 - vs (generally unused, low prio)
+# m4x4 - vs (generally unused, low prio)
+# pow - vs
+# setp_comp - vs
+# sincos - vs (inadvisable to use, low prio)
 
 _instr: dict[str, Callable[[list[str], list[str]], list[str]]] = {
-    'abs': lambda opcode, operands: [f'max {operands[0]}, {_negate(operands[0])}\n'],
+    'abs': lambda opcode, operands: [f'max {operands[0]}, {operands[1]}, {_negate(operands[1])}\n'],
     'add': _type1,
     'break': _parsebreak,
     'breakp': lambda opcode, operands: [f'breakc {operands[0].replace('p0', 'cmp')}\n'],
@@ -171,14 +181,19 @@ _instr: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     'log': lambda opcode, operands: _type1u(['lg2'], operands),
     'logp': lambda opcode, operands: _type1u(['lg2'], operands),
     'loop': lambda opcode, operands: [f'for {operands[1]}\n'],
+    'lrp': lambda opcode, operands: _instr['sub'](['sub'], [operands[0], operands[2], operands[3]]) + _instr['mul'](['mul'], [operands[0], operands[1], operands[0]]) + _instr['add'](['add'], [operands[0], operands[0], operands[3]]),
     'mad': _parsemad,
     'max': _type1,
     'min': _type1,
+    # required because in vs_1_1 the mova instruction doesn't exist
     'mov': lambda opcode, operands: _type1u(opcode, operands) if 'a0' not in operands[0] else _instr['mova'](['mova'], operands),
     'mova': _type1u,
     'mul': _type1,
     'nop': lambda opcode, operands: ['nop\n'],
     'nrm': lambda opcode, operands: _instr['dp4'](['dp4'], [operands[0], operands[1], operands[1]]) + _instr['rsq'](['rsq'], [operands[0], operands[0]]) + _instr['mul'](['mul'], [operands[0], operands[1], operands[0]]),
+    # from Microsoft's documentation
+    'pow': lambda opcode, operands: _instr['abs'](['abs'], [operands[0], operands[1]]) + _instr['log'](['log'], [operands[0], operands[0]]) + _instr['mul'](['mul'], [operands[0], operands[2], operands[0]]) + _instr['exp'](['exp'], [operands[0], operands[0]]),
+    'rcp': _type1u,
     'rep': lambda opcode, operands: [f'for {operands[0]}{output.inctab_after()}\n'],
     'ret': lambda opcode, operands: ['jmp'], # incomplete instruction, must be followed by a label
     'rsq': _type1u,
