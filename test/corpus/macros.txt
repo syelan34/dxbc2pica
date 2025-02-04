@@ -28,25 +28,27 @@ sgn instruction -- scratch register
 sgn r0, r1, r2, r3
 sgn r0, -r1, r2, r3
 ---------------
-add r0, r0, -r0
-sge r2, r1, r0
-sge r3, -r1, r0
+slt r2, -r1, r1
+slt r3, r1, -r1
 add r0, r2, -r3
-add r0, r0, -r0
-sge r2, -r1, r0
-sge r3, r1, r0
+slt r2, r1, -r1
+slt r3, -r1, r1
 add r0, r2, -r3
 ===============
 sgn instruction -- uniform register
 ===============
 sgn r0, c1, r2, r3
+
 sgn r0, -c1, r2, r3
 ---------------
-add r0, r0, -r0
-sge r2, c1, r0
-sge r3, -c1, r0
+mov r2, -c1
+slt r2, -c1, -r2
+mov r3, c1
+slt r3, c1, -r3
 add r0, r2, -r3
-add r0, r0, -r0
-sge r2, -c1, r0
-sge r3, c1, r0
+
+mov r2, c1
+slt r2, c1, -r2
+mov r3, -c1
+slt r3, -c1, -r3
 add r0, r2, -r3

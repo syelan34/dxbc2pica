@@ -14,3 +14,15 @@ Output semantics -- vs 3_0
 dcl_position o0
 -----------------------
 .out - position o0
+=======================
+mov to addressing register -- vs 1_0/1_1
+=======================
+mov a0.x, v0
+-----------------------
+mova a0.x, v0
+=======================
+Output semantics -- vs 2_0 to 3_0
+=======================
+mova a0.xy, v0
+-----------------------
+mova a0.xy, v0

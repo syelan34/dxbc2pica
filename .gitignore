@@ -1,5 +1,8 @@
-*.pica
-*.shbin
 __pycache__/
 .ropeproject/
+.zed/
+*.pica
+*.shbin
 *.dxbc
+*.hlsl
+compile.sh
