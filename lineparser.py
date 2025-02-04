@@ -132,8 +132,19 @@ def _parsemad(opcode, operands) -> list[str]:
     if sum(['c' in op for op in operands]) == 0 or (numconstants == 1 and 'c' not in operands[1]): return [f'mad {operands[0]}, {operands[1]}, {operands[2]}, {operands[3]}\n']
     return _instr['mul'](['mul'], operands) + _instr['add'](['add'], [operands[0], operands[0], operands[3]])
 
+_oppositecmp = {
+    'eq': 'eq',
+    'ne': 'ne',
+    'lt': 'gt',
+    'le': 'ge',
+    'gt': 'lt',
+    'ge': 'le'
+}
+
 def _parsesetp(opcode, operands) -> list[str]:
-    return [_comment(f'{opcode} {operands}')]
+    if 'c' in operands[1] or 'c' in operands[2]:
+        return [f'cmp {operands[2]}, {_oppositecmp[opcode[1]]}, {_oppositecmp[opcode[1]]}, {operands[1]}\n']
+    return [f'cmp {operands[1]}, {opcode[1]}, {opcode[1]}, {operands[2]}\n']
     
 def _setoutputused(output: str) -> bool:
     if output in _invalidoutputs: 
@@ -149,12 +160,11 @@ def _setoutputused(output: str) -> bool:
 # m3x4 - vs (generally unused, low prio)
 # m4x3 - vs (generally unused, low prio)
 # m4x4 - vs (generally unused, low prio)
-# pow - vs
 # setp_comp - vs
 # sincos - vs (inadvisable to use, low prio)
 
 _instr: dict[str, Callable[[list[str], list[str]], list[str]]] = {
-    'abs': lambda opcode, operands: [f'max {operands[0]}, {operands[1]}, {_negate(operands[1])}\n'],
+    'abs': lambda opcode, operands: _instr['max'](['max'], [operands[0], operands[1], _negate(operands[1])]),
     'add': _type1,
     'break': _parsebreak,
     'breakp': lambda opcode, operands: [f'breakc {operands[0].replace('p0', 'cmp')}\n'],

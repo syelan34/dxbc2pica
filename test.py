@@ -96,24 +96,27 @@ def _parsetestinputwithbetterformatting(t):
 def _testfile(f) -> list[_test]:
     tests = _splitfileintotests(f)
     for t in tests:
-        lineparser.clearstate()
-        result = _testresult()
-        result.passed = True
-        result.correct = t.input
-        parseddata = _parsetestinputwithbetterformatting(t)
-        lineparser.clearstate() 
-        linenum = 0
-        expected = list(filter(None,t.expected))
-        for i, line in enumerate(t.input):
-            outlen = len(lineparser.parse(line))
-            expectedlines = expected[linenum:linenum+outlen]
-            gotlines = parseddata[linenum:linenum+outlen]
-            if expectedlines != gotlines:
-                result.passed = False
-                result.correct = t.input[:linenum]
-                result.failed = gotlines
-                result.expected = expectedlines
-                break
-            linenum += outlen
-        t.result = result
+        t.result = _getresult(t)
     return tests
+def _getresult(t) -> _testresult:
+    lineparser.clearstate()
+    result = _testresult()
+    result.passed = True
+    result.correct = t.input
+    parseddata = _parsetestinputwithbetterformatting(t)
+    lineparser.clearstate() 
+    linenum = 0
+    expected = list(filter(None,t.expected))
+    for i, line in enumerate(t.input):
+        outlen = len(lineparser.parse(line))
+        expectedlines = expected[linenum:linenum+outlen]
+        gotlines = parseddata[linenum:linenum+outlen]
+        for i, line in enumerate(expectedlines):
+            if line != gotlines[i]:
+                result.passed = False
+                result.correct = parseddata[:linenum+i]
+                result.failed = gotlines[i:]
+                result.expected = expectedlines[i:]
+                return result
+        linenum += outlen
+    return result
