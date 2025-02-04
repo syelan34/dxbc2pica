@@ -23,3 +23,7 @@ Currently mostly supports up to vs3_0 with some important differences:
 python3 converter.py [-i, --input INPUT] [-o, --output OUTPUT]
 ```
 If an input is not specified, will use stdin, and if output is not specified will use stdout.
+
+>[!NOTE]
+>The Microsoft `fxc` compiler outputs some extra info at the start of the file which should be removed.
+>At the moment this doesn't get handled automatically but is planned for the future.
