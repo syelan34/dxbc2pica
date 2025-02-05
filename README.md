@@ -18,7 +18,11 @@ Currently mostly supports up to vs3_0 with some important differences:
 - Fixes register names
 - Converts some macros to actual instructions when possible
 
-### Usage:
+### Credits:
+- nightchild for pointing out how similar dx9 bytecode is to pica200 assembly
+- tgjones for Shader Playground which allowed me to compile HLSL on linux easily
+
+## Usage:
 ```
 python3 converter.py [-i, --input INPUT] [-o, --output OUTPUT]
 ```

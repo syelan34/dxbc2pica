@@ -1,36 +1,39 @@
-import output
+import inout
 from typing import Callable
 
 def parse(line) -> str | list[str]:
-    # remove leading and trailing whitespace
-    line = line.strip()
-    
-    if line == '': # ignore empty lines
-        return ''
-    
-    # handle comments
-    if line.startswith('//'):
-        return _comment(line[3:])
-    
-    # handle version
-    if line.startswith('vs_'):
-        return _parse_version(line)
-    components = line.replace(',', '').split()
-    opcode = components[0].split("_")
-    operands = components[1:]
-    opbase = [op.split('.')[0] for op in operands]
-    
-    return list(
-        filter(
-            None, 
-            [
-                f'.out {op} {_outputstoname[op]}\n' 
-                for op in opbase
-                if op in _possibleoutputs and not _setoutputused(op)
-            ] + 
-            _instr[opcode[0]](opcode, operands)
+    try:
+        # remove leading and trailing whitespace
+        line = line.strip()
+        
+        if line == '': # ignore empty lines
+            return ''
+        
+        # handle comments
+        if line.startswith('//'):
+            return _comment(line[3:])
+        
+        # handle version
+        if line.startswith('vs_'):
+            return _parse_version(line)
+        components = line.replace(',', '').split()
+        opcode = components[0].split("_")
+        operands = components[1:]
+        opbase = [op.split('.')[0] for op in operands]
+        
+        return list(
+            filter(
+                None, 
+                [
+                    f'.out {op} {_outputstoname[op]}\n' 
+                    for op in opbase
+                    if op in _possibleoutputs and not _setoutputused(op)
+                ] + 
+                _instr[opcode[0]](opcode, operands)
+            )
         )
-    )
+    except KeyError:
+        return [_comment(f'Unexpected string: {line}')]
 
 def clearstate():
     for key in _outputsused.keys():
@@ -81,7 +84,7 @@ def _parsebreak(opcode, operands) -> list[str]:
     if len(opcode) == 1:
         return [f'{opcode[0]}\n']
     else:
-        return [f'cmp {operands[0]}, {opcode[1]}, {opcode[1]}, {operands[1]}\n', 'breakc cmp.x\n']
+        return _instr['setp'](['setp'], [operands[0], operands[1]]) + ['breakc cmp.x\n']
 
 def _parsedcl(opcode, operands) -> list[str]: 
     if operands[0] in ['2d', 'cube', 'volume', '3d']: # texture samplers
@@ -91,15 +94,12 @@ def _parsedcl(opcode, operands) -> list[str]:
     outopcode = '.out -' if ('o' in operands[0]) else '.in'
 
     if opcode[1] == 'texcoord': # force there to be a number
-        return [f'{outopcode} {opcode[1]}0 {operands[0]}{output.ignoretab()}\n']
-    return [f'{outopcode} {opcode[1]} {operands[0]}{output.ignoretab()}\n']
+        return [f'{outopcode} {opcode[1]}0 {operands[0]}{inout.ignoretab()}\n']
+    return [f'{outopcode} {opcode[1]} {operands[0]}{inout.ignoretab()}\n']
 
 def _type1(opcode, operands) -> list[str]:
     if 'c' in operands[1] and 'c' in operands[2]:
-        return [
-            f'mov {operands[0]}, {operands[1]}\n',
-            f'{opcode[0]} {operands[0]}, {operands[2]}, {operands[0]}\n'
-        ]
+        return _instr['mov'](['mov'], [operands[0], operands[1]]) + [f'{opcode[0]} {operands[0]}, {operands[2]}, {operands[0]}\n']
     else:
         if 'c' in operands[2]:
             return [f'{opcode[0]} {operands[0]}, {operands[2]}, {operands[1]}\n']
@@ -107,10 +107,7 @@ def _type1(opcode, operands) -> list[str]:
         
 def _type1i(opcode, operands) -> list[str]:
     if 'c' in operands[1] and 'c' in operands[2]:
-        return [
-            f'mov {operands[0]}, {operands[1]}\n',
-            f'{opcode[0]} {operands[0]}, {_negate(operands[2])}, {_negate(operands[0])}\n'
-        ]
+        return _instr['mov'](['mov'], [operands[0], operands[1]]) + [f'{opcode[0]} {operands[0]}, {_negate(operands[2])}, {_negate(operands[0])}\n']
     else:
         return [f'{opcode[0]} {operands[0]}, {operands[1]}, {operands[2]}\n']
 
@@ -118,6 +115,7 @@ def _type1u(opcode, operands) -> list[str]:
     return [f'{opcode[0]} {operands[0]}, {operands[1]}\n']
 
 def _parseif(opcode, operands) -> list[str]:
+    inout.inctab_after();
     if len(opcode) == 1: 
         if 'p' in operands[0]: return [f'ifc {operands[0].replace('p0', 'cmp')}\n']
         else: return [f'ifu {operands[0]}\n']
@@ -132,16 +130,15 @@ def _parsemad(opcode, operands) -> list[str]:
     if sum(['c' in op for op in operands]) == 0 or (numconstants == 1 and 'c' not in operands[1]): return [f'mad {operands[0]}, {operands[1]}, {operands[2]}, {operands[3]}\n']
     return _instr['mul'](['mul'], operands) + _instr['add'](['add'], [operands[0], operands[0], operands[3]])
 
-_oppositecmp = {
-    'eq': 'eq',
-    'ne': 'ne',
-    'lt': 'gt',
-    'le': 'ge',
-    'gt': 'lt',
-    'ge': 'le'
-}
-
 def _parsesetp(opcode, operands) -> list[str]:
+    _oppositecmp = {
+        'eq': 'eq',
+        'ne': 'ne',
+        'lt': 'gt',
+        'le': 'ge',
+        'gt': 'lt',
+        'ge': 'le'
+    }
     if 'c' in operands[1] or 'c' in operands[2]:
         return [f'cmp {operands[2]}, {_oppositecmp[opcode[1]]}, {_oppositecmp[opcode[1]]}, {operands[1]}\n']
     return [f'cmp {operands[1]}, {opcode[1]}, {opcode[1]}, {operands[2]}\n']
@@ -172,18 +169,18 @@ _instr: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     'callnz': lambda opcode, operands: [f'call{'u' if 'b' in operands[1] else 'c'} {operands[1].replace('p0', 'cmp')}, {operands[0]}\n'],
     'crs': lambda opcode, operands: (_ for _ in ()).throw(Exception('crs not supported, make sure your compiler is set not to keep macros')),
     'dcl': _parsedcl,
-    'def': lambda opcode, operands: [f'.constf {operands[0]}({operands[1]}, {operands[2]}, {operands[3]}, {operands[4]}{output.ignoretab()})\n'],
+    'def': lambda opcode, operands: [f'.constf {operands[0]}({operands[1]}, {operands[2]}, {operands[3]}, {operands[4]}{inout.ignoretab()})\n'],
     'defb': lambda opcode, operands: (_ for _ in ()).throw(Exception('defb not supported')),
-    'defi': lambda opcode, operands: [f'.consti {operands[0]}({operands[1]}, {operands[2]}, {operands[3]}, {operands[4]}){output.ignoretab()}\n'],
+    'defi': lambda opcode, operands: [f'.consti {operands[0]}({operands[1]}, {operands[2]}, {operands[3]}, {operands[4]}){inout.ignoretab()}\n'],
     'dp3': _type1,
     'dp4': _type1,
     'dst': _type1i,
     'else': lambda opcode, operands: ['.else\n'],
-    'endif': lambda opcode, operands: [f'.end{output.dectab()}\n'],
-    'endloop': lambda opcode, operands: [f'.end{output.dectab()}\n'],
-    'endrep': lambda opcode, operands: [f'.end{output.dectab()}\n'],
-    'exp': lambda opcode, operands: [f'ex2 {operands[0]}, {operands[1]}\n'],
-    'expp': lambda opcode, operands: [f'ex2 {operands[0]}, {operands[1]}\n'],
+    'endif': lambda opcode, operands: [f'.end{inout.dectab()}\n'],
+    'endloop': lambda opcode, operands: [f'.end{inout.dectab()}\n'],
+    'endrep': lambda opcode, operands: [f'.end{inout.dectab()}\n'],
+    'exp': lambda opcode, operands: _type1u(['ex2'], operands),
+    'expp': lambda opcode, operands: _type1u(['ex2'], operands),
     'frc': lambda opcode, operands: _type1u(['flr'], operands) + _instr['sub'](['sub'], [operands[0], operands[1], operands[0]]),
     'if': _parseif,
     'label': lambda opcode, operands: [f' {operands[0]}\n'],
@@ -204,7 +201,7 @@ _instr: dict[str, Callable[[list[str], list[str]], list[str]]] = {
     # from Microsoft's documentation
     'pow': lambda opcode, operands: _instr['abs'](['abs'], [operands[0], operands[1]]) + _instr['log'](['log'], [operands[0], operands[0]]) + _instr['mul'](['mul'], [operands[0], operands[2], operands[0]]) + _instr['exp'](['exp'], [operands[0], operands[0]]),
     'rcp': _type1u,
-    'rep': lambda opcode, operands: [f'for {operands[0]}{output.inctab_after()}\n'],
+    'rep': lambda opcode, operands: [f'for {operands[0]}{inout.inctab_after()}\n'],
     'ret': lambda opcode, operands: ['jmp'], # incomplete instruction, must be followed by a label
     'rsq': _type1u,
     'setp': _parsesetp,
