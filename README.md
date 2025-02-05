@@ -14,7 +14,7 @@ Currently mostly supports up to vs3_0 with some important differences:
 ### Main fixes that this applies:
 - Fixes when uniforms are used in invalid source operand positions
 > [!NOTE]
-> This may create a larger program, up to 2 extra instructions per input instruction in some cases
+> This may create a larger program, up to 4 extra instructions per input instruction in some cases
 - Fixes register names
 - Converts some macros to actual instructions when possible
 
@@ -27,3 +27,7 @@ Currently mostly supports up to vs3_0 with some important differences:
 python3 converter.py [-i, --input INPUT] [-o, --output OUTPUT]
 ```
 If an input is not specified, will use stdin, and if output is not specified will use stdout.
+
+>[!NOTE]
+>The Microsoft `fxc` compiler outputs some extra info at the start of the file which should be removed before running the converter.
+>At the moment this doesn't get handled automatically but is planned for the future.
