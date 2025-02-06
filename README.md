@@ -23,11 +23,17 @@ Currently mostly supports up to vs3_0 with some important differences:
 - tgjones for Shader Playground which allowed me to compile HLSL on linux easily
 
 ## Usage:
-```
+```sh
 python3 converter.py [-i, --input INPUT] [-o, --output OUTPUT]
 ```
 If an input is not specified, will use stdin, and if output is not specified will use stdout.
 
+Example using stdin:
+```sh
+$ fxc.exe /T vs_1_1 /E main input.hlsl | python3 converter.py -o out.v.pica
+$ picasso -o out.shbin out.v.pica
+```
+
 >[!NOTE]
 >The Microsoft `fxc` compiler outputs some extra info at the start of the file which should be removed before running the converter.
->At the moment this doesn't get handled automatically but is planned for the future.
+>At the moment any unknown lines simply get commented out but is planned to handle it better for the future.
