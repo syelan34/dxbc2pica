@@ -1,5 +1,11 @@
 # DirectX bytecode to pica200 assembly converter
 
+> [!CAUTION]
+> Please don't use this tool at the moment, as due to a lot of compiler shenanigans it's basically unusable.
+> It will produce code that assembles, but 99% of the time will not work and WILL require manually fixing. 
+> I have a few plans to try and fix this, such as adding data flow analysis to the tool but ultimately it will still produce suboptimal code because the compiler just isn't really build for this platform to begin with and all the hacks I have to pull just make it worse.
+> At some point I plan to just outright make an HLSL compiler, but until then I suggest either using this for a baseline but writing your own assembly, or just flat out not using this tool at all.
+
 > [!WARNING]
 > Uniforms are not declared due to how picasso allocates declared registers, so you need to use the register IDs directly.
 
@@ -30,7 +36,7 @@ If an input is not specified, will use stdin, and if output is not specified wil
 
 Example using stdin:
 ```sh
-$ fxc.exe /T vs_1_1 /E main input.hlsl | python3 converter.py -o out.v.pica
+$ fxc.exe /nologo /T vs_1_1 /E main input.hlsl | python3 converter.py -o out.v.pica
 $ picasso -o out.shbin out.v.pica
 ```
 

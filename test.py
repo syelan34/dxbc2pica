@@ -35,7 +35,7 @@ def runtests(filter: list[str] | None):
             print(f'{i+1}. {ft.name}:')
             [print(f'\t{line}') for line in ft.result.correct]
             [print(f'\t{colorama.Fore.RED}{line}{colorama.Style.RESET_ALL}') for line in ft.result.failed]
-            [print(f'\t{colorama.Fore.GREEN}{line}{colorama.Style.RESET_ALL}') for line in ft.result.expected] if isinstance(ft.result.expected, list) else [print(colorama.Fore.GREEN + f'\t{ft.result.expected}' + colorama.Style.RESET_ALL)]
+            [print(f'\t{colorama.Fore.GREEN}{line}{colorama.Style.RESET_ALL}') for line in ft.result.expected]
             print()
     sys.exit(0)
 
@@ -43,8 +43,8 @@ def runtests(filter: list[str] | None):
 class _testresult:
     passed: bool
     correct: list[str]
-    failed: str | list[str]
-    expected: str | list[str]
+    failed: list[str]
+    expected: list[str]
     def __str__(self):
         return f'Passed: {self.passed}\n'
 class _test:
@@ -53,7 +53,7 @@ class _test:
     expected: list[str] = []
     result: _testresult
     def __str__(self):
-        return f'Name: {self.name}\nInput: {self.input}\nExpected: {self.expected}\nResult: {self.result}'
+        return f'Name: {self.name}\nInput: {'\n'.join(self.input)}\nExpected: {'\n'.join(self.expected)}\nResult: {self.result}'
 
 def _findlineidxofrepeatedchar(lines: list[str], char: str) -> int:
     for i, line in enumerate(lines):
