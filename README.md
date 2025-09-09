@@ -16,7 +16,7 @@ Currently mostly supports up to vs3_0 with some important differences:
 - a0 register has 2 components instead of 4, so programs using more will not compile
 - Certain macro functions aren't supported such as `sincos` and `crs`
 - Some rounding behaviour, for example with `mova`, is different
-- HLSL matrices are column-major by default, but C3D is not. You need to specify `row_major` on all matrices in your HLSL code.
+- HLSL matrices are column-major by default, but C3D is not. You need to specify `row_major` on all matrices in your HLSL code. (After further testing I actually have no idea what's going on with matrices, play around with the attributes until matrix multiplication uses `dp3/4` instead of `mad`)
 
 ### Main fixes that this applies:
 - Fixes when uniforms are used in invalid source operand positions
