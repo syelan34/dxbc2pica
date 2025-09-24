@@ -5,9 +5,14 @@
 
 Currently experimental, generally functional enough to be used on simple shaders. 
 
-Currently mostly supports up to vs3_0 with some important differences:
-- cmp register has 2 components instead of 4, so programs using more will not compile
-- a0 register has 2 components instead of 4, so programs using more will not compile
+Currently mostly supports up to vs_3_0 with some important differences:
+- vs_3_0 specific:
+- cmp register has 2 components instead 4 (applies to vs_2_0+)
+- a0 register has 2 components instead of 4 (applies to vs_2_0+)
+- Only 96 uniforms are available instead of 256 (applies to vs_2_0+)
+- Only 16 scratch registers are available instead of 32
+- Samplers are not available
+- General differences:
 - Certain macro functions aren't supported such as `sincos` and `crs`
 - Some rounding behaviour, for example with `mova`, is different
 - HLSL matrices are column-major by default, but C3D is not. You need to specify `row_major` on all matrices in your HLSL code. (After further testing I actually have no idea what's going on with matrices, play around with the attributes until matrix multiplication uses `dp3/4` instead of `mad`)
