@@ -16,3 +16,4 @@ CMakeCache.txt
 Makefile
 dxbc2pica
 compile_commands.json
+flake.lock

@@ -1,7 +1,10 @@
 import sys
 import argparse
 
-def get_input() -> tuple[bool, list[str]]:
+output = sys.stdout
+
+def get_input() -> tuple[bool, list[str], str]:
+    global output
     _test: bool = False
     _filter: list[str] = []
     parser = argparse.ArgumentParser(description='Converts DirectX DXBC to PICA200 assembly')
@@ -10,34 +13,22 @@ def get_input() -> tuple[bool, list[str]]:
     parser.add_argument('-i','--input', type=str, help='Input file')
     parser.add_argument('-o','--output', type=str, help='Output file')
     args = parser.parse_args()
-    _test = args.test
-    _filter = args.filter
-    if args.test: return (_test, _filter)
+    
+    if args.test: return (True, args.filter, "testing")
     # set input to either stdin or input file depending on what was passed
     if args.input is not None:
         sys.stdin = open(args.input, 'r')
     
     # set output to either stdout or output file depending on what was passed
     if args.output is not None:
-        sys.stdout = open(args.output, 'w')
-    return (False, [])
+        output = open(args.output, 'w')
+    return (False, [], args.input if args.input is not None else "<stdin>")
 
-_realntabs = 0
-_inctabafterflag = False
-_ignoretabs = False
-def printline(line):
-    global _realntabs
-    global _inctabafterflag
-    global _ignoretabs
-    ntabs = _realntabs
-    if _ignoretabs:
-        ntabs = 0
-        _ignoretabs = False
-    if isinstance(line, str): sys.stdout.write('\t' * ntabs + line.lstrip())
-    elif isinstance(line, list) and isinstance(line[0], str): [sys.stdout.write('\t' * ntabs + l.lstrip()) for l in line]
-    if _inctabafterflag:
-        _realntabs += 1
-        _inctabafterflag = False
+
+def printline(line = ''):
+    global output
+    if isinstance(line, str): print(line.lstrip(), file=output)
+    elif isinstance(line, list): [print(str(l).lstrip(), file=output) for l in line]
     return ''
     
 def settab(ntabs):
@@ -64,3 +55,5 @@ def ignoretab():
     global _ignoretab
     _ignoretab = True
     return ''
+
+comment = lambda comment = '': '\n'.join(['; ' + line for line in comment.split('\n')])

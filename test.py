@@ -1,4 +1,4 @@
-import lineparser
+import parser
 import os
 import pathlib
 import sys
@@ -92,23 +92,23 @@ def _flatten(l: list[str | list[str]]):
             else: flat_list.extend(row)
         return flat_list
 def _parsetestinputwithbetterformatting(t):
-    return [x for x in [''.join(_flatten([lineparser.parse(line) for line in t.input])).split('\n')][0] if x]
+    return [x for x in [''.join(_flatten([parser.parse(line) for line in t.input])).split('\n')][0] if x]
 def _testfile(f) -> list[_test]:
     tests = _splitfileintotests(f)
     for t in tests:
         t.result = _getresult(t)
     return tests
 def _getresult(t) -> _testresult:
-    lineparser.clearstate()
+    parser.clearstate()
     result = _testresult()
     result.passed = True
     result.correct = t.input
     parseddata = _parsetestinputwithbetterformatting(t)
-    lineparser.clearstate() 
+    parser.clearstate() 
     linenum = 0
     expected = list(filter(None,t.expected))
     for i, line in enumerate(t.input):
-        outlen = len(lineparser.parse(line))
+        outlen = len(parser.parse(line))
         expectedlines = expected[linenum:linenum+outlen]
         gotlines = parseddata[linenum:linenum+outlen]
         for i, line in enumerate(expectedlines):
