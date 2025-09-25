@@ -5,8 +5,8 @@
 
 Currently experimental, generally functional enough to be used on simple shaders. 
 
-Currently mostly supports up to vs_3_0 with some important differences:
-- vs_3_0 specific:
+Currently mostly supports up to vs\_3_0 with some important differences:
+vs_3_0 specific:
 - cmp register has 2 components instead 4 (applies to vs_2_0+)
 - a0 register has 2 components instead of 4 (applies to vs_2_0+)
 - Only 96 uniforms are available instead of 256 (applies to vs_2_0+)
@@ -14,7 +14,7 @@ Currently mostly supports up to vs_3_0 with some important differences:
 - Texture samplers are not available
 - Output type `view` (used for vertex view vector) is not an HLSL semantic so `POSITIONT` is used as a stand-in (unavailable outside of vs_3_0)
 - The pica200 expects the normal vector output to be a quaternion instead of a vector
-- General differences:
+General differences:
 - Certain macro functions aren't supported such as `sincos` and `crs`
 - texcoord0w does not exist in HLSL, so texcoord3.x is used instead
 - Some rounding behaviour, for example with `mova`, is different
