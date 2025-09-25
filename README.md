@@ -20,7 +20,7 @@ Currently mostly supports up to vs_3_0 with some important differences:
 ### Main fixes that this applies:
 - Fixes when uniforms are used in invalid source operand positions
 > [!NOTE]
-> This may create a larger program, up to 5 extra instructions per input instruction in some cases
+> This may create a larger program, up to 5 extra instructions per input instruction in some cases (working on reducing this)
 - Fixes register names to match picasso's
 - Expands macros when possible
 
