@@ -21,7 +21,7 @@ Currently mostly supports up to vs_3_0 with some important differences:
 - Fixes when uniforms are used in invalid source operand positions
 > [!NOTE]
 > This may create a larger program, up to 5 extra instructions per input instruction in some cases (working on reducing this)
-- Fixes register names to match picasso's
+- Fixes register names to match picasso
 - Expands macros when possible
 
 ### Credits:
