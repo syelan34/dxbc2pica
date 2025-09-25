@@ -24,6 +24,11 @@ $ picasso -o out.shbin out.v.pica
 - [X] vs\_3_0
 - [ ] vs\_4_0
 - [ ] vs\_5_0
+- [ ] vs\_5_1
+- [ ] gs\_4_0
+- [ ] gs\_4_1
+- [ ] gs\_5_0
+- [ ] gs\_5_1
 
 Currently mostly supports up to vs_3_0 with some important differences:
 ### vs_3_0 specific:
@@ -38,7 +43,8 @@ Currently mostly supports up to vs_3_0 with some important differences:
 - Certain macro functions aren't supported such as `sincos` and `crs`
 - texcoord0w does not exist in HLSL, so texcoord3.x is used instead
 - Some rounding behaviour, for example with `mova`, is different
-- HLSL matrices are column-major by default, but C3D is not. You need to specify `row_major` on all matrices in your HLSL code. (After further testing I actually have no idea what's going on with matrices, play around with the attributes until matrix multiplication uses `dp3/4` instead of `mad`)
+- The `lit` instruction isn't currently supported as I'm not entirely sure of the implementation
+- HLSL matrices are column-major by default, but C3D is not. You need to specify `row_major` on all matrices in your HLSL code. (After further testing I actually have no idea what's going on with matrices, play around with the attributes until matrix multiplication uses `dp3/4` instead of `mad` which should give the correct result)
 
 ## Main fixes that this applies:
 - Fixes when uniforms are used in invalid source operand positions
@@ -49,11 +55,13 @@ Currently mostly supports up to vs_3_0 with some important differences:
 
 ## Planned Features:
 - Geometry shader support
-- Support for vs\_4_0/vs\_5_0
+- Support for vs\_4_0+ which use fairly different formatting
+- Generating SHBIN files directly instead of going through picasso
+- Fixing the testing suite
 
 ## Credits:
 - nightchild for pointing out how similar dx9 bytecode is to pica200 assembly
-- tgjones for Shader Playground which allowed me to compile HLSL on linux easily
+- tgjones for Shader Playground which allowed me to compile HLSL on linux more easily
 
 >[!NOTE]
 >The Microsoft `fxc` compiler outputs some extra info at the start of the file which should be removed before running the converter (or by using the /nologo option).
