@@ -11,7 +11,7 @@ Currently mostly supports up to vs_3_0 with some important differences:
 - a0 register has 2 components instead of 4 (applies to vs_2_0+)
 - Only 96 uniforms are available instead of 256 (applies to vs_2_0+)
 - Only 16 scratch registers are available instead of 32
-- Samplers are not available
+- Texture samplers are not available
 - General differences:
 - Certain macro functions aren't supported such as `sincos` and `crs`
 - Some rounding behaviour, for example with `mova`, is different
