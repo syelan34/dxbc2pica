@@ -12,7 +12,7 @@ shaderparsers: dict[str, Callable[[list[str]], shader]] = {
     'vs_2_0':  vs_2_0.shaderparse,
     # 'vs_2_x':  vs_2_x.bodyparse,
     # 'vs_2_sw': vs_2_sw.bodyparse,
-    # 'vs_3_0':  vs_3_0.bodyparse,
+    'vs_3_0':  vs_3_0.shaderparse,
     # 'vs_3_sw': vs_3_sw.bodyparse,
 }
 

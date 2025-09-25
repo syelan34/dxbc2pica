@@ -38,11 +38,6 @@ class shadertype(Enum):
    
  
 class shaderoutputs:
-    position: str = ""
-    color: str = ""
-    texcoord0: str = ""
-    texcoord1: str = ""
-    texcoord2: str = ""
     def as_instr(self) -> list[str]:
         return [f'.out {val} {key}' for (key, val) in vars(self).items()]
     def __str__(self) -> str:

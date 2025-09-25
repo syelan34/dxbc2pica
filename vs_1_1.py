@@ -111,6 +111,7 @@ _outputsused: dict[str, bool] = {
     'oT0': False,
     'oT1': False,
     'oT2': False,
+    'oT3': False
 }
 
 _outputstoname: dict[str, str] = {
@@ -119,11 +120,11 @@ _outputstoname: dict[str, str] = {
     'oT0': 'texcoord0',
     'oT1': 'texcoord1',
     'oT2': 'texcoord2',
+    'oT3': 'texcoord0w'
 }
 
 _invalidoutputs: dict[str, Callable[[], None]] = {
     'oD1': lambda: (_ for _ in ()).throw(Exception('More than 1 color output register not supported')),
-    'oT3': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
     'oT4': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
     'oT5': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
     'oT6': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),

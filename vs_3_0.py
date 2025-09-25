@@ -2,17 +2,14 @@ import parser
 from typing import Callable
 from shtypes import *
 
-def _setoutputused(outputsused: dict[str, bool], output: str) -> bool:
-    if output in _invalidoutputs: 
-        _invalidoutputs[output]()
-    used = outputsused[output]
-    outputsused[output] = True
-    return used
-
 def unifparse(line: str) -> uniform:
     unif = uniform()
     parts = [part for part in line.split(' ') if len(part) > 0]
-    unif.type = uniftype(parts[1][0])
+    try:
+        unif.type = uniftype(parts[1][0])
+    except ValueError:
+        raise Exception(f'Invalid uniform "{parts[1]}"')
+    
     unif.id = int(parts[1][1:])
     unif.size = int(parts[2])
     unif.name = parts[0]
@@ -26,13 +23,6 @@ def headerparse(lines: list[str]) -> shader_header:
     return header
 
 def bodyparse(lines: list[str], outshader) -> None:
-    _outputsused: dict[str, bool] = {
-        'oPos': False,
-        'oD0': False,
-        'oT0': False,
-        'oT1': False,
-        'oT2': False,
-    }
     shader.body = []
     for line in lines:
         components = line.replace(',', '').split()
@@ -40,21 +30,19 @@ def bodyparse(lines: list[str], outshader) -> None:
         operands = components[1:]
         opbase = [op.split('.')[0] for op in operands]
         for op in opbase:
-            if op in _possibleoutputs:
-                if _setoutputused(_outputsused, op): 
-                    continue
-                    raise Exception(f"Output {op} already assigned")
+            if op in _outputstoname:
                 setattr(outshader.header.outputs, _outputstoname[op], op)
         # add a line to properly declare outputs the line before (if there are any)
         shader.body += _instr[opcode[0]](opcode, operands)
 
-def _parsedcl(opcode, operands, header: shader_header) -> None: 
-    if operands[0] in ['2d', 'cube', 'volume', '3d']: # texture samplers
+def _parsedcl(opcode, operands, header: shader_header) -> None:
+    if ('s' in operands[0]):
         raise Exception("Texture samplers not supported")
-    
-    if (opcode[1] == 'texcoord'): opcode[1] += '0'
-    # in vs1_1 only inputs are listed with dcl, outputs are only listed when used
-    header.inputs += [f'.in {opcode[1]} {operands[0]}']
+        
+    if opcode[1] in _outputstoname:
+        setattr(header.outputs, _outputstoname[opcode[1]], operands[0])
+    else:
+        raise Exception(f'Invalid Output {'_'.join(opcode)}')
 
 def addconstant(opcode, operands, out: shader_header):
     unif: constantunif = constantunif()
@@ -68,7 +56,7 @@ def addconstant(opcode, operands, out: shader_header):
 
 def vs(opcode, operands, out):
     out.type = shadertype.VERTEX_SHADER
-    out.version = '2_0'
+    out.version = '3_0'
 
 def setupparse(out: shader_header, lines):
     # set constant, inputs, outputs from the setup stuff
@@ -89,7 +77,6 @@ def setupparse(out: shader_header, lines):
 def shaderparse(sh) -> shader:
     out = shader()
     
-    
     header = [line[3:].strip() for line in sh[:[sh.index(l) for l in sh if not l.startswith('//') and not l.isspace()][0]] if not (line[3:].isspace() or len(line[3:]) < 1)]
     body = [line.strip() for line in sh if not line.startswith('//') and not line.isspace()] # all non-commented lines
     setup = []
@@ -109,25 +96,15 @@ def shaderparse(sh) -> shader:
     return out
 
 _outputstoname: dict[str, str] = {
-    'oPos': 'position',
-    'oD0': 'color',
-    'oT0': 'texcoord0',
-    'oT1': 'texcoord1',
-    'oT2': 'texcoord2',
+    'position': 'position',
+    'color': 'color',
+    'texcoord': 'texcoord0',
+    'texcoord1': 'texcoord1',
+    'texcoord2': 'texcoord2',
+    'texcoord3': 'texcoord0w',
+    'normal': 'normalquat',
+    'tangent': 'view',
 }
-
-_invalidoutputs: dict[str, Callable[[], None]] = {
-    'oD1': lambda: (_ for _ in ()).throw(Exception('More than 1 color output register not supported')),
-    'oT3': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT4': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT5': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT6': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT7': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oFog': lambda: (_ for _ in ()).throw(Exception('Fog output register not supported')),
-    'oPts': lambda: (_ for _ in ()).throw(Exception('Point size output register not supported')),
-}
-
-_possibleoutputs = (list(_outputstoname.keys()) + list(_invalidoutputs.keys()))
 
 def _negate(operand: str) -> str:
     return operand.replace('-', '') if '-' in operand else '-' + operand
@@ -215,4 +192,5 @@ _instr: dict[str, Callable[[list[str], list[str]], list[instr]]] = {
     'sincos': lambda opcode, operands: (_ for _ in ()).throw(Exception('sincos not supported')),
     'slt': _type1i,
     'sub': lambda opcode, operands: _instr['add'](['add'], [operands[0], operands[1], _negate(operands[2])]),
+    'texldl': lambda opcode, operands: (_ for _ in ()).throw(Exception('texldl not supported')),
 }

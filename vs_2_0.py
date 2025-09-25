@@ -2,12 +2,14 @@ import parser
 from typing import Callable
 from shtypes import *
 
-def _setoutputused(outputsused: dict[str, bool], output: str) -> bool:
-    if output in _invalidoutputs: 
-        _invalidoutputs[output]()
-    used = outputsused[output]
-    outputsused[output] = True
-    return used
+_outputstoname: dict[str, str] = {
+    'oPos': 'position',
+    'oD0': 'color',
+    'oT0': 'texcoord0',
+    'oT1': 'texcoord1',
+    'oT2': 'texcoord2',
+    'oT3': 'texcoord0w'
+}
 
 def unifparse(line: str) -> uniform:
     unif = uniform()
@@ -26,13 +28,6 @@ def headerparse(lines: list[str]) -> shader_header:
     return header
 
 def bodyparse(lines: list[str], outshader) -> None:
-    _outputsused: dict[str, bool] = {
-        'oPos': False,
-        'oD0': False,
-        'oT0': False,
-        'oT1': False,
-        'oT2': False,
-    }
     shader.body = []
     for line in lines:
         components = line.replace(',', '').split()
@@ -40,18 +35,12 @@ def bodyparse(lines: list[str], outshader) -> None:
         operands = components[1:]
         opbase = [op.split('.')[0] for op in operands]
         for op in opbase:
-            if op in _possibleoutputs:
-                if _setoutputused(_outputsused, op): 
-                    continue
-                    raise Exception(f"Output {op} already assigned")
+            if op in _outputstoname:
                 setattr(outshader.header.outputs, _outputstoname[op], op)
         # add a line to properly declare outputs the line before (if there are any)
         shader.body += _instr[opcode[0]](opcode, operands)
 
 def _parsedcl(opcode, operands, header: shader_header) -> None: 
-    if operands[0] in ['2d', 'cube', 'volume', '3d']: # texture samplers
-        raise Exception("Texture samplers not supported")
-    
     if (opcode[1] == 'texcoord'): opcode[1] += '0'
     # in vs1_1 only inputs are listed with dcl, outputs are only listed when used
     header.inputs += [f'.in {opcode[1]} {operands[0]}']
@@ -107,27 +96,6 @@ def shaderparse(sh) -> shader:
     bodyparse(body, out) # also includes header because in this version, outputs are only declared by instructions
     
     return out
-
-_outputstoname: dict[str, str] = {
-    'oPos': 'position',
-    'oD0': 'color',
-    'oT0': 'texcoord0',
-    'oT1': 'texcoord1',
-    'oT2': 'texcoord2',
-}
-
-_invalidoutputs: dict[str, Callable[[], None]] = {
-    'oD1': lambda: (_ for _ in ()).throw(Exception('More than 1 color output register not supported')),
-    'oT3': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT4': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT5': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT6': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oT7': lambda: (_ for _ in ()).throw(Exception('More than 3 texcoord output registers not supported')),
-    'oFog': lambda: (_ for _ in ()).throw(Exception('Fog output register not supported')),
-    'oPts': lambda: (_ for _ in ()).throw(Exception('Point size output register not supported')),
-}
-
-_possibleoutputs = (list(_outputstoname.keys()) + list(_invalidoutputs.keys()))
 
 def _negate(operand: str) -> str:
     return operand.replace('-', '') if '-' in operand else '-' + operand

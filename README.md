@@ -12,8 +12,11 @@ Currently mostly supports up to vs_3_0 with some important differences:
 - Only 96 uniforms are available instead of 256 (applies to vs_2_0+)
 - Only 16 scratch registers are available instead of 32
 - Texture samplers are not available
+- Output type `view` (used for vertex view vector) is not an HLSL semantic so `POSITIONT` is used as a stand-in (unavailable outside of vs_3_0)
+- The pica200 expects the normal vector output to be a quaternion instead of a vector
 - General differences:
 - Certain macro functions aren't supported such as `sincos` and `crs`
+- texcoord0w does not exist in HLSL, so texcoord3.x is used instead
 - Some rounding behaviour, for example with `mova`, is different
 - HLSL matrices are column-major by default, but C3D is not. You need to specify `row_major` on all matrices in your HLSL code. (After further testing I actually have no idea what's going on with matrices, play around with the attributes until matrix multiplication uses `dp3/4` instead of `mad`)
 
