@@ -2,18 +2,18 @@ import inout
 from shtypes import *
 from inout import comment
 import copy
+import parsers.vs_1_1, parsers.vs_2_0, parsers.vs_2_x, parsers.vs_3_0
 
 from typing import Callable
-import vs_1_1, vs_2_0, vs_2_x, vs_2_sw, vs_3_0, vs_3_sw
 
 
 shaderparsers: dict[str, Callable[[list[str]], shader]] = {
-    'vs_1_1':  vs_1_1.shaderparse,
-    'vs_2_0':  vs_2_0.shaderparse,
-    # 'vs_2_x':  vs_2_x.bodyparse,
-    # 'vs_2_sw': vs_2_sw.bodyparse,
-    'vs_3_0':  vs_3_0.shaderparse,
-    # 'vs_3_sw': vs_3_sw.bodyparse,
+    'vs_1_1':  parsers.vs_1_1.shaderparse,
+    'vs_2_0':  parsers.vs_2_0.shaderparse,
+    'vs_2_x':  parsers.vs_2_x.shaderparse,
+    'vs_2_sw': parsers.vs_2_x.shaderparse,
+    'vs_3_0':  parsers.vs_3_0.shaderparse,
+    'vs_3_sw': parsers.vs_3_0.shaderparse,
 }
 
 def getunusedregs(shader: shader) -> list[register]:
