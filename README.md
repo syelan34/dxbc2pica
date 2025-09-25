@@ -30,11 +30,10 @@ $ picasso -o out.shbin out.v.pica
 - [ ] gs\_5_0
 - [ ] gs\_5_1
 
-Currently mostly supports up to vs_3_0 with some important differences:
-### vs_3_0 specific:
+### vs_3_0 specific differences:
 - cmp register has 2 components instead 4 (applies to vs_2_0+)
 - a0 register has 2 components instead of 4 (applies to vs_2_0+)
-- Only 96 uniforms are available instead of 256 (applies to vs_2_0+)
+- Only 96 float uniforms are available instead of 256 (applies to vs_2_0+)
 - Only 16 scratch registers are available instead of 32
 - Texture samplers are not available
 - Output type `view` (used for vertex view vector) is not an HLSL semantic so `TANGENT` is used as a stand-in (unavailable outside of vs_3_0)
