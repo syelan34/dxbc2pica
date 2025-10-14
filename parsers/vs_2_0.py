@@ -132,13 +132,12 @@ def _pow(opcode, operands) -> list[instr]:
     return _instr['abs'](['abs'], [intermediate, operands[1]]) + _instr['log'](['log'], [intermediate, intermediate]) + _instr['mul'](['mul'], [intermediate, operands[2], intermediate]) + _instr['exp'](['exp'], [operands[0], intermediate])
 
 def _crs(opcode, operands) -> list[instr]:
-    intermediate0 = operands[0].setswizzle("xyz")
-    intermediate1 = register("dummy").mark_to_be_replaced()
+    intermediate = operands[0]
     
     if operands[0].name == operands[1].name or operands[0].is_output():
-        intermediate0 = register("dummy").mark_to_be_replaced()
+        intermediate = register("dummy").mark_to_be_replaced()
 
-    return _instr['mul'](['mul'], [intermediate0, operands[1].setswizzle("yzx"), operands[2].setswizzle("zxy")]) + _instr['mul'](['mul'], [intermediate1, operands[1].setswizzle("zxy"), operands[2].setswizzle("yzx")]) + _instr['sub'](['sub'], [operands[0], intermediate0, intermediate1]) 
+    return _instr['mul'](['mul'], [intermediate, operands[1].setswizzle("yzx"), operands[2].setswizzle("zxy")]) + _instr['mad'](['mad'], [operands[0], operands[1].setswizzle("zxy"), operands[2].setswizzle("yzx"), copy.deepcopy(intermediate).negate()])
 
 
 def _sgn(opcode, operands) -> list[instr]:

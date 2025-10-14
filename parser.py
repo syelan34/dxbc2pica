@@ -32,12 +32,20 @@ def findfreescratchreg(input: shader, index: int) -> register:
     ]
     
     numinstructions = len(shader.body[index+1:])
-    
+    if numinstructions == 0:
+        ops = shader.body[index].operands
+        read = [r for r in ops[1:] if not r.tobereplaced]
+        for i in range(16):
+            if f'r{i}' not in [r.name for r in read]:
+                return register(f"r{i}")
     
     for i in range(16):
+        print(f"checking r{i}")
         for (instr_idx, instruction) in enumerate(shader.body[index+1:]):
+            print(instruction.as_line())
             # check for flow control instructions
             if instruction.opcode in flowcontrol:
+                print("instruction is in flow control")
                 # finally, double check there's no unused registers that we can utilize
                 unused = getunusedregs(input)
                 if len(unused) == 0:
@@ -47,13 +55,16 @@ def findfreescratchreg(input: shader, index: int) -> register:
             else:
                 read = sum([r.name == f'r{i}' and not r.tobereplaced for r in instruction.operands[1:]]) > 0
                 
+                print("read:", read)
                 if read: 
                     break # register is read after this line, therefore we can't use it
                 
                 written = instruction.dest().name == f'r{i}' and not instruction.dest().tobereplaced
+                print("written:", written)
                 if written or instr_idx + index == len(shader.body) - 1: return register(f'r{i}')
                 # if this is the last instruction and the register still hasn't been touched at all then we can use it
                 if instr_idx+1 == numinstructions:
+                    print("last line in program")
                     return register(f'r{i}')
         
     # finally, double check there's no unused registers that we can utilize
