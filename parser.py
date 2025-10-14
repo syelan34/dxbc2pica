@@ -69,7 +69,7 @@ def parseshader(shader, version) -> shader:
     return shaderparsers[version](shader)
 
 def fixupshader(input: shader) -> shader:
-    # fix register overwrites
+    # replace marked registers
     for (index, instr) in enumerate(input.body):
         for (opid, reg) in enumerate(instr.operands):
             if reg.tobereplaced != 0:
@@ -78,24 +78,6 @@ def fixupshader(input: shader) -> shader:
                 print(f'using register {freereg.as_line()}')
                 reg.tobereplaced = 0
                 reg.name = freereg.name
-    
-    # fix double output write
-    for (index, instr) in enumerate(input.body):
-        num_outputs_in_instr_operands = sum([reg.name in vars(shader.header.outputs).values() for reg in instr.operands[1:]])
-        
-        if num_outputs_in_instr_operands > 0: # there is an output being read from in this instruction (not allowed)
-            
-            # figure out which output registers are being read from
-            # make a deep copy because otherwise that list can be overwritten when we fix up the instruction
-            outputsread = copy.deepcopy(list(filter(lambda op: op[1].name in vars(shader.header.outputs).values(), enumerate(instr.operands[1:]))))
-            
-            # look backwards to see when each output was last written to, and replace both with any free scratch register
-            for outputindex, outputread in outputsread:
-                for previousinstrindex, previousinstr in enumerate(input.body[index-1::-1]):
-                    if previousinstr.dest() == outputread:
-                        freereg = findfreescratchreg(input, index)
-                        previousinstr.operands[0].name = freereg.name
-                        instr.operands[outputindex + 1].name = freereg.name
     return input
 
 def outputshader(shader) -> None:

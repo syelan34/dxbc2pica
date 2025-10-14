@@ -121,7 +121,7 @@ def _parsebreak(opcode, operands) -> list[instr]:
     if len(opcode) == 1:
         return [instr('break')]
     else:
-        return _instr['setp'](['setp'], [operands[0], operands[1]]) + [instr('breakc', ['cmp.x'])]
+        return _instr['setp'](['setp'], [operands[0], operands[1]]) + [instr('breakc', [register('cmp.x')])]
 
 # yet to implement:
 # lit - vs
@@ -135,8 +135,8 @@ def _parsebreak(opcode, operands) -> list[instr]:
 
 vs_2_x_instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     'break': _parsebreak,
-    'breakp': lambda opcode, operands: [instr('breakc', [operands[0].replace('p0', 'cmp')])],
-    'callnz': lambda opcode, operands: [instr('call' + 'u' if 'b' in operands[1].name else 'c', [operands[1].replace('p0', 'cmp'), operands[0]])],
+    'breakp': lambda opcode, operands: [instr('breakc', [operands[0]])],
+    'callnz': lambda opcode, operands: [instr('call' + 'u' if operands[1].is_bool() else 'c', [operands[1], operands[0]])],
     'if': _parseif,
     'setp': _parsesetp,
 }

@@ -135,12 +135,6 @@ _invalidoutputs: dict[str, Callable[[], None]] = {
 }
 
 _possibleoutputs = (list(_outputstoname.keys()) + list(_invalidoutputs.keys()))
-    
-def _parsemad(opcode, operands: list[register]) -> list[instr]:
-    numconstants = sum(['c' in op.name for op in operands])
-    # if there are no constants or there is a uniform in either src2 or src3 do nothing
-    if numconstants == 0 or (numconstants == 1 and 'c' not in operands[3].name): return [instr('mad', operands)]
-    return _instr['mul'](['mul'], operands[:3]) + _instr['add'](['add'], [operands[0], operands[3], operands[0]])
 
 def _type1(opcode, operands: list[register]) -> list[instr]:
     if 'c' in operands[1].name and 'c' in operands[2].name:
@@ -160,11 +154,23 @@ def _type1u(opcode, operands: list[register]) -> list[instr]:
     return [instr(opcode[0], operands)]
     
 def _frc(opcode, operands: list[register]) -> list[instr]:
-    outputreg = copy.deepcopy(operands[0])
-    if (operands[0] == operands[1]): 
-        operands[0].mark_to_be_replaced()
-    return _type1u(['flr'], operands) + _instr['sub'](['sub'], [outputreg, operands[1], copy.copy(operands[0])])
+    intermediate: register = register("dummy")
+    intermediate.mark_to_be_replaced()
+    if operands[0] == operands[1] or operands[0].is_output(): 
+        return _type1u(['flr'], [intermediate, operands[1]]) + _instr['sub'](['sub'], [operands[0], operands[1], intermediate])
+    return _type1u(['flr'], operands) + _instr['sub'](['sub'], [operands[0], operands[1], operands[0]])
+
+def _mad(opcode, operands: list[register]) -> list[instr]:
+    numconstants = sum([op.is_constant() for op in operands])
+    # if there are no constants or there is a uniform in either src2 or src3 do nothing
+    if numconstants == 0 or (numconstants == 1 and 'c' not in operands[3].name): return [instr('mad', operands)]
     
+    intermediate: register = operands[0]
+    if operands[0].is_output() or operands[0] in operands[1:]:
+        intermediate = register("dummy")
+        intermediate.mark_to_be_replaced()
+        
+    return _instr['mul'](['mul'], [intermediate, operands[1], operands[2]]) + _instr['add'](['add'], [operands[0], operands[3], intermediate])
 
 _instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     'add': _type1,
@@ -177,11 +183,11 @@ _instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     # 'lit': lambda opcode, operands: f'max {operands[0]}.x, {operands[1]}\n',
     'log': lambda opcode, operands: _type1u(['lg2'], operands),
     'logp': lambda opcode, operands: _type1u(['lg2'], operands),
-    'mad': _parsemad,
+    'mad': _mad,
     'max': _type1,
     'min': _type1,
     # required because in vs_1_1 the mova instruction doesn't exist so mov is used for both
-    'mov': lambda opcode, operands: _type1u(opcode, operands) if operands[0].name != 'a0' else _type1u(['mova'], operands),
+    'mov': lambda opcode, operands: _type1u(['mova'], operands) if operands[0].is_addressing() else _type1u(opcode, operands),
     'mul': _type1,
     'nop': lambda opcode, operands: [instr('nop')],
     'rcp': _type1u,

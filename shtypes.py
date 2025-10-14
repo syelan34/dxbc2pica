@@ -19,14 +19,26 @@ class register:
     def __str__(self):
         return f'register(negative: {self.negative}, name: {self.name}, swizzle: {self.swizzle}, tobereplaced: {self.tobereplaced})'
     def as_line(self):
-        return ('-' * self.negative) + (f'{self.name}.{self.swizzle}' if self.swizzle else self.name) + (f'<to be replaced: {self.tobereplaced}>' if self.tobereplaced != 0 else '')
+        return ('-' * self.negative) + (f'{self.name}.{self.swizzle}' if self.swizzle else self.name) + (f' <to be replaced: {self.tobereplaced}>' if self.tobereplaced != 0 else '')
     def negate(self):
         self.negative = not self.negative
         return self
-    def mark_to_be_replaced(self): 
+    def mark_to_be_replaced(self):
         register.n += 1
         self.tobereplaced = register.n
         return self
+    def is_output(self):
+        return self.name[0] == 'o'
+    def is_constant(self):
+        return self.name[0] == 'c' and self.name is not 'cmp'
+    def is_scratch(self):
+        return self.name[0] == 'r'
+    def is_bool(self):
+        return self.name[0] == 'b'
+    def is_int(self):
+        return self.name[0] == 'i'
+    def is_addressing(self):
+        return self.name[0] == 'a'
         
 class instr:
     opcode: str
