@@ -22,13 +22,6 @@ def getunusedregs(shader: shader) -> list[register]:
         for reg in instr.operands:
             regsused.append(reg.name)
     return list(filter(lambda reg: reg.name != '', [register(f'r{i}') if f'r{i}' not in regsused else register('') for i in range(16)]))
-
-n: int = -1
-
-# def findfreescratchreg(input:shader, index:int) -> register:
-#     global n
-#     n += 1
-#     return register(f'TEST{n}')
     
     
 def findfreescratchreg(input: shader, index: int) -> register:
@@ -38,21 +31,37 @@ def findfreescratchreg(input: shader, index: int) -> register:
         'break', 'breakc', 'call', 'callc', 'callu', '.else', '.end', 'ifc', 'ifu', 'for' # for loop is usually fine except for when loop is zero
     ]
     
+    numinstructions = len(shader.body[index+1:])
+    
+    
     for i in range(16):
-        for (instr_idx, instruction) in enumerate(shader.body[index:]):
+        for (instr_idx, instruction) in enumerate(shader.body[index+1:]):
             # check for flow control instructions
             if instruction.opcode in flowcontrol:
-                # if there's a flow control instruction then we can't know where it'll go 
-                # so first make sure there's no registers that never get used and if there's none then error
+                # finally, double check there's no unused registers that we can utilize
                 unused = getunusedregs(input)
-                if len(unused) == 0: 
+                if len(unused) == 0:
                     raise Exception("No unused registers, unable to determine whether others are available due to possible jump")
                 else:
                     return unused[0]
-            read = sum([r.name == f'r{i}' for r in instruction.operands[1:]]) > 0
-            written = instruction.dest().name == f'r{i}'
-            if read: break # register is read after this line, therefore we can't use it
-            if written or instr_idx + index == len(shader.body) - 1: return register(f'r{i}')
+            else:
+                read = sum([r.name == f'r{i}' and not r.tobereplaced for r in instruction.operands[1:]]) > 0
+                
+                if read: 
+                    break # register is read after this line, therefore we can't use it
+                
+                written = instruction.dest().name == f'r{i}' and not instruction.dest().tobereplaced
+                if written or instr_idx + index == len(shader.body) - 1: return register(f'r{i}')
+                # if this is the last instruction and the register still hasn't been touched at all then we can use it
+                if instr_idx+1 == numinstructions:
+                    return register(f'r{i}')
+        
+    # finally, double check there's no unused registers that we can utilize
+    unused = getunusedregs(input)
+    if len(unused) == 0:
+        raise Exception("No unused registers, unable to determine whether others are available due to possible jump")
+    else:
+        return unused[0]
     raise Exception("No registers guaranteed available to use")
 
 def parseshader(shader, version) -> shader:
@@ -60,6 +69,17 @@ def parseshader(shader, version) -> shader:
     return shaderparsers[version](shader)
 
 def fixupshader(input: shader) -> shader:
+    # fix register overwrites
+    for (index, instr) in enumerate(input.body):
+        for (opid, reg) in enumerate(instr.operands):
+            if reg.tobereplaced != 0:
+                print(f'replacing {reg.as_line()} in instruction {instr.as_line()}')
+                freereg = findfreescratchreg(input, index)
+                print(f'using register {freereg.as_line()}')
+                reg.tobereplaced = 0
+                reg.name = freereg.name
+    
+    # fix double output write
     for (index, instr) in enumerate(input.body):
         num_outputs_in_instr_operands = sum([reg.name in vars(shader.header.outputs).values() for reg in instr.operands[1:]])
         

@@ -1,31 +1,45 @@
 from enum import Enum
 
 class register:
-    name: str
-    swizzle: str | None
+    n: int = 0
+    negative: bool = False
+    name: str = ''
+    swizzle: str | None = None
+    tobereplaced: int = 0 # marks as needing to be replaced with free register
     def __init__(self, reg: str):
-        splitreg = reg.split('.')
-        self.name = splitreg[0]
-        self.swizzle = splitreg[1] if len(splitreg) == 2 else None
-    def __str__(self):
-        return f'register(name: {self.name}, swizzle: {self.swizzle})'
-    def as_line(self):
-        return f'{self.name}.{self.swizzle}' if self.swizzle else self.name
+        if self.name == 'p0': self.name = 'cmp'
+        if len(reg) > 0:
+            splitreg = reg.split('.')
+            self.negative = (splitreg[0][0] == '-')
+            self.name = splitreg[0][self.negative:]
+            self.swizzle = splitreg[1] if len(splitreg) == 2 else None
+        self.tobereplaced = 0
     def __eq__(self, other) -> bool:
         return self.name == other.name and self.swizzle == other.swizzle
+    def __str__(self):
+        return f'register(negative: {self.negative}, name: {self.name}, swizzle: {self.swizzle}, tobereplaced: {self.tobereplaced})'
+    def as_line(self):
+        return ('-' * self.negative) + (f'{self.name}.{self.swizzle}' if self.swizzle else self.name) + (f'<to be replaced: {self.tobereplaced}>' if self.tobereplaced != 0 else '')
+    def negate(self):
+        self.negative = not self.negative
+        return self
+    def mark_to_be_replaced(self): 
+        register.n += 1
+        self.tobereplaced = register.n
+        return self
         
 class instr:
     opcode: str
     operands: list[register]
-    def __init__(self, opcode, operands = []):
+    def __init__(self, opcode: str, operands: list[register] = []):
         self.opcode = opcode
-        self.operands = [register(operand) for operand in operands]
+        self.operands = operands
     def __str__(self):
-        return f'instr(opcode: {self.opcode}, dest: {self.operands[0]}, operands: {[str(reg) for reg in self.operands[1:]]})'
+        return f'instr(opcode: {self.opcode}, dest: {self.operands[0] if len(self.operands) > 0 else '<>'}, operands: {[str(reg) for reg in self.operands[1:]]})'
     def as_line(self) -> str:
         return f'{self.opcode} {','.join([operand.as_line() for operand in self.operands])}'
     def dest(self) -> register:
-        return self.operands[0]
+        return self.operands[0] if len(self.operands) > 0 else register('')
 
 class uniftype(Enum):
     FLOAT_UNIF = 'c'

@@ -1,6 +1,7 @@
 import parser
 from typing import Callable
 from shtypes import *
+import copy
 
 # def clearstate():
 #     for key in _outputsused.keys():
@@ -43,7 +44,7 @@ def bodyparse(lines: list[str], outshader) -> None:
                     raise Exception(f"Output {op} already assigned")
                 setattr(outshader.header.outputs, _outputstoname[op], op)
         # add a line to properly declare outputs the line before (if there are any)
-        shader.body += _instr[opcode[0]](opcode, operands)
+        shader.body += _instr[opcode[0]](opcode, [register(op) for op in operands])
 
 def _parsedcl(opcode, operands, header: shader_header) -> None: 
     if operands[0] in ['2d', 'cube', 'volume', '3d']: # texture samplers
@@ -134,56 +135,58 @@ _invalidoutputs: dict[str, Callable[[], None]] = {
 }
 
 _possibleoutputs = (list(_outputstoname.keys()) + list(_invalidoutputs.keys()))
-
-def _negate(operand: str) -> str:
-    return operand.replace('-', '') if '-' in operand else '-' + operand
     
-def _parsemad(opcode, operands) -> list[instr]:
-    numconstants = sum(['c' in op for op in operands])
+def _parsemad(opcode, operands: list[register]) -> list[instr]:
+    numconstants = sum(['c' in op.name for op in operands])
     # if there are no constants or there is a uniform in either src2 or src3 do nothing
-    if numconstants == 0 or (numconstants == 1 and 'c' not in operands[3]): return [instr('mad', operands)]
+    if numconstants == 0 or (numconstants == 1 and 'c' not in operands[3].name): return [instr('mad', operands)]
     return _instr['mul'](['mul'], operands[:3]) + _instr['add'](['add'], [operands[0], operands[3], operands[0]])
 
-def _type1(opcode, operands) -> list[instr]:
-    if 'c' in operands[1] and 'c' in operands[2]:
+def _type1(opcode, operands: list[register]) -> list[instr]:
+    if 'c' in operands[1].name and 'c' in operands[2].name:
         return [_instr['mov'](['mov'], [operands[0], operands[1]])[0], instr(opcode[0], [operands[0], operands[2], operands[0]])]
     else:
-        if 'c' in operands[2]:
+        if 'c' in operands[2].name:
             return [instr(opcode[0], [operands[0], operands[2], operands[1]])]
-            # return [f'{opcode[0]} {operands[0]}, {operands[2]}, {operands[1]}\n']
         return [instr(opcode[0], operands)]
         
-def _type1i(opcode, operands) -> list[instr]:
-    if 'c' in operands[1] and 'c' in operands[2]:
-        return _instr['mov'](['mov'], [operands[0], operands[1]]) + [instr(opcode[0], [operands[0], _negate(operands[2]), _negate(operands[0])])]
+def _type1i(opcode, operands: list[register]) -> list[instr]:
+    if 'c' in operands[1].name and 'c' in operands[2].name:
+        return _instr['mov'](['mov'], [operands[0], operands[1]]) + [instr(opcode[0], [operands[0], operands[2].negate(), operands[0].negate()])]
     else:
         return [instr(opcode[0], operands)]
 
-def _type1u(opcode, operands) -> list[instr]:
+def _type1u(opcode, operands: list[register]) -> list[instr]:
     return [instr(opcode[0], operands)]
+    
+def _frc(opcode, operands: list[register]) -> list[instr]:
+    outputreg = copy.deepcopy(operands[0])
+    if (operands[0] == operands[1]): 
+        operands[0].mark_to_be_replaced()
+    return _type1u(['flr'], operands) + _instr['sub'](['sub'], [outputreg, operands[1], copy.copy(operands[0])])
+    
 
-_instr: dict[str, Callable[[list[str], list[str]], list[instr]]] = {
+_instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     'add': _type1,
     'dp3': _type1,
     'dp4': _type1,
     'dst': _type1i,
     'exp': lambda opcode, operands: _type1u(['ex2'], operands),
     'expp': lambda opcode, operands: _type1u(['ex2'], operands),
-    'frc': lambda opcode, operands: _type1u(['flr'], operands) + _instr['sub'](['sub'], [operands[0], operands[1], operands[0]]),
+    'frc': _frc,
     # 'lit': lambda opcode, operands: f'max {operands[0]}.x, {operands[1]}\n',
     'log': lambda opcode, operands: _type1u(['lg2'], operands),
     'logp': lambda opcode, operands: _type1u(['lg2'], operands),
-    'lrp': lambda opcode, operands: _instr['sub'](['sub'], [operands[0], operands[2], operands[3]]) + _instr['mul'](['mul'], [operands[0], operands[1], operands[0]]) + _instr['add'](['add'], [operands[0], operands[0], operands[3]]),
     'mad': _parsemad,
     'max': _type1,
     'min': _type1,
     # required because in vs_1_1 the mova instruction doesn't exist so mov is used for both
-    'mov': lambda opcode, operands: _type1u(opcode, operands) if 'a0' not in operands[0] else _type1u(['mova'], operands),
+    'mov': lambda opcode, operands: _type1u(opcode, operands) if operands[0].name != 'a0' else _type1u(['mova'], operands),
     'mul': _type1,
     'nop': lambda opcode, operands: [instr('nop')],
     'rcp': _type1u,
     'rsq': _type1u,
     'sge': _type1i,
     'slt': _type1i,
-    'sub': lambda opcode, operands: _instr['add'](['add'], [operands[0], operands[1], _negate(operands[2])]),
+    'sub': lambda opcode, operands: _instr['add'](['add'], [operands[0], operands[1], copy.deepcopy(operands[2]).negate()]),
 }

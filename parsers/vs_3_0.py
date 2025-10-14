@@ -1,6 +1,7 @@
 import parser
 from typing import Callable
 from shtypes import *
+import parsers.vs_2_x as vs_2_x
 
 def unifparse(line: str) -> uniform:
     unif = uniform()
@@ -33,7 +34,7 @@ def bodyparse(lines: list[str], outshader) -> None:
             if op in _outputstoname:
                 setattr(outshader.header.outputs, _outputstoname[op], op)
         # add a line to properly declare outputs the line before (if there are any)
-        shader.body += _instr[opcode[0]](opcode, operands)
+        shader.body += _instr[opcode[0]](opcode, [register(op) for op in operands])
 
 def _parsedcl(opcode, operands, header: shader_header) -> None:
     if ('s' in operands[0]):
@@ -106,113 +107,8 @@ _outputstoname: dict[str, str] = {
     'tangent': 'view',
 }
 
-def _negate(operand: str) -> str:
-    return operand.replace('-', '') if '-' in operand else '-' + operand
-    
-def _parsemad(opcode, operands) -> list[instr]:
-    numconstants = sum(['c' in op for op in operands])
-    # if there are no constants or there is a uniform in either src2 or src3 do nothing
-    if numconstants == 0 or (numconstants == 1 and 'c' not in operands[3]): return [instr('mad', operands)]
-    return _instr['mul'](['mul'], operands[:3]) + _instr['add'](['add'], [operands[0], operands[3], operands[0]])
-    
-def _parseif(opcode, operands) -> list[instr]:
-    if len(opcode) == 1: 
-        if 'p' in operands[0]: return [instr('ifc', [operands[0].replace('p0', 'cmp')])]
-        else: return [instr('ifu', operands)]#[f'ifu {operands[0]}\n']
-    return [instr('cmp', [operands[0], opcode[1], opcode[1], operands[1]]), instr('ifc', 'cmp.x')]
-    
-def _parsesetp(opcode, operands) -> list[instr]:
-    _oppositecmp = {
-        'eq': 'eq',
-        'ne': 'ne',
-        'lt': 'gt',
-        'le': 'ge',
-        'gt': 'lt',
-        'ge': 'le'
-    }
-    if 'c' in operands[1] or 'c' in operands[2]:
-        return [instr('cmp', [operands[2], _oppositecmp[opcode[1]], _oppositecmp[opcode[1]], operands[1]])]
-    return [instr('cmp', [operands[1], opcode[1], opcode[1], operands[2]])]
-
-def _parsebreak(opcode, operands) -> list[instr]:
-    if len(opcode) == 1:
-        return [instr('break')]
-    else:
-        return _instr['setp'](['setp'], [operands[0], operands[1]]) + [instr('breakc', ['cmp.x'])]
-
-def _type1(opcode, operands) -> list[instr]:
-    if 'c' in operands[1] and 'c' in operands[2]:
-        return [_instr['mov'](['mov'], [operands[0], operands[1]])[0], instr(opcode[0], [operands[0], operands[2], operands[0]])]
-    else:
-        if 'c' in operands[2]:
-            return [instr(opcode[0], [operands[0], operands[2], operands[1]])]
-            # return [f'{opcode[0]} {operands[0]}, {operands[2]}, {operands[1]}\n']
-        return [instr(opcode[0], operands)]
-        
-def _type1i(opcode, operands) -> list[instr]:
-    if 'c' in operands[1] and 'c' in operands[2]:
-        return _instr['mov'](['mov'], [operands[0], operands[1]]) + [instr(opcode[0], [operands[0], _negate(operands[2]), _negate(operands[0])])]
-    else:
-        return [instr(opcode[0], operands)]
-
-def _type1u(opcode, operands) -> list[instr]:
-    return [instr(opcode[0], operands)]
-
-# yet to implement:
-# lit - vs
-# m3x2 - vs (generally unused, low prio)
-# m3x3 - vs (generally unused, low prio)
-# m3x4 - vs (generally unused, low prio)
-# m4x3 - vs (generally unused, low prio)
-# m4x4 - vs (generally unused, low prio)
-# setp_comp - vs
-# sincos - vs (inadvisable to use, low prio)
-
-_instr: dict[str, Callable[[list[str], list[str]], list[instr]]] = {
-    'abs': lambda opcode, operands: _instr['max'](['max'], [operands[0], operands[1], _negate(operands[1])]),
-    'add': _type1,  
-    'break': _parsebreak,
-    'breakp': lambda opcode, operands: [instr('breakc', [operands[0].replace('p0', 'cmp')])],
-    'call': lambda opcode, operands: [instr(opcode, operands)],
-    'callnz': lambda opcode, operands: [instr('call' + 'u' if 'b' in operands[1] else 'c', [operands[1].replace('p0', 'cmp'), operands[0]])],
-    'crs': lambda opcode, operands: (_ for _ in ()).throw(Exception('crs not supported, make sure your compiler is set not to keep macros')),
-    'dp3': _type1,
-    'dp4': _type1,
-    'dst': _type1i,
-    'else': lambda opcode, operands: [instr('.else')],
-    'endif': lambda opcode, operands: [instr('.end')],
-    'endloop': lambda opcode, operands: [instr('.end')],
-    'endrep': lambda opcode, operands: [instr('.end')],
-    'exp': lambda opcode, operands: _type1u(['ex2'], operands),
-    'expp': lambda opcode, operands: _type1u(['ex2'], operands),
-    'frc': lambda opcode, operands: _type1u(['flr'], operands) + _instr['sub'](['sub'], [operands[0], operands[1], operands[0]]),
-    'if': _parseif,
-    'label': lambda opcode, operands: [instr(operands[0])],
-    # 'lit': lambda opcode, operands: f'max {operands[0]}.x, {operands[1]}\n',
-    'log': lambda opcode, operands: _type1u(['lg2'], operands),
-    'logp': lambda opcode, operands: _type1u(['lg2'], operands),
-    'loop': lambda opcode, operands: [instr('for', [operands[1]])],
-    'lrp': lambda opcode, operands: _instr['sub'](['sub'], [operands[0], operands[2], operands[3]]) + _instr['mul'](['mul'], [operands[0], operands[1], operands[0]]) + _instr['add'](['add'], [operands[0], operands[0], operands[3]]),
-    'mad': _parsemad,
-    'max': _type1,
-    'min': _type1,
-    'mov': _type1u,
-    'mova': _type1u,
-    'mul': _type1,
-    'nop': lambda opcode, operands: [instr('nop')],
-    'nrm': lambda opcode, operands: _instr['dp4'](['dp4'], [operands[0], operands[1], operands[1]]) + _instr['rsq'](['rsq'], [operands[0], operands[0]]) + _instr['mul'](['mul'], [operands[0], operands[1], operands[0]]),
-    # from Microsoft's documentation (https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/pow---vs)
-    'pow': lambda opcode, operands: _instr['abs'](['abs'], [operands[0], operands[1]]) + _instr['log'](['log'], [operands[0], operands[0]]) + _instr['mul'](['mul'], [operands[0], operands[2], operands[0]]) + _instr['exp'](['exp'], [operands[0], operands[0]]),
-    'rcp': _type1u,
-    'rep': lambda opcode, operands: [instr('for', [operands[0]])],
-    'ret': lambda opcode, operands: [instr('jmp')], # incomplete instruction, must be followed by a label
-    'rsq': _type1u,
-    'setp': _parsesetp,
-    'sge': _type1i,
-    # #TODO: use 4 instruction version in case of uniform instead of the autogenerated 5 using movs
-    'sgn': lambda opcode, operands: _instr['slt'](['slt'], [operands[2], _negate(operands[1]), operands[1]]) + _instr['slt'](['slt'], [operands[3], operands[1], _negate(operands[1])]) + _instr['sub'](['sub'], [operands[0], operands[2], operands[3]]),
-    'sincos': lambda opcode, operands: (_ for _ in ()).throw(Exception('sincos not supported')),
-    'slt': _type1i,
-    'sub': lambda opcode, operands: _instr['add'](['add'], [operands[0], operands[1], _negate(operands[2])]),
+vs_3_0_instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     'texldl': lambda opcode, operands: (_ for _ in ()).throw(Exception('texldl not supported')),
 }
+
+_instr = {**vs_2_x._instr, **vs_3_0_instr}
