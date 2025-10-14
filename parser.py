@@ -72,11 +72,11 @@ def fixupshader(input: shader) -> shader:
     # replace marked registers
     for (index, instr) in enumerate(input.body):
         for (opid, reg) in enumerate(instr.operands):
-            if reg.tobereplaced != 0:
+            if reg.tobereplaced:
                 print(f'replacing {reg.as_line()} in instruction {instr.as_line()}')
                 freereg = findfreescratchreg(input, index)
                 print(f'using register {freereg.as_line()}')
-                reg.tobereplaced = 0
+                reg.tobereplaced = False
                 reg.name = freereg.name
     return input
 

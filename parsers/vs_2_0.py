@@ -107,8 +107,7 @@ def _lrp(opcode, operands: list[register]) -> list[instr]:
     intermediate: register = operands[0]
     
     if operands[0] in operands[1:] or operands[0].is_output():
-        intermediate = register("dummy")
-        intermediate.mark_to_be_replaced()
+        intermediate = register("dummy").mark_to_be_replaced()
 
     return _instr['sub'](['sub'], [intermediate, operands[2], operands[3]]) + _instr['mad'](['mad'], [operands[0], operands[1], intermediate, operands[3]])
 
@@ -116,9 +115,8 @@ def _lrp(opcode, operands: list[register]) -> list[instr]:
 def _nrm(opcode, operands) -> list[instr]:
     intermediate: register = operands[0]
     
-    if operands[1] == operands[0] or operands[0].is_output():
-        intermediate = register("dummy")
-        intermediate.mark_to_be_replaced()
+    if operands[1].name == operands[0].name or operands[0].is_output():
+        intermediate = register("dummy").mark_to_be_replaced()
         
     return _instr['dp4'](['dp4'], [intermediate, operands[1], operands[1]]) + _instr['rsq'](['rsq'], [intermediate, intermediate]) + _instr['mul'](['mul'], [operands[0], operands[1], intermediate])    
 
@@ -128,11 +126,20 @@ def _nrm(opcode, operands) -> list[instr]:
 def _pow(opcode, operands) -> list[instr]:
     intermediate: register = operands[0]
     
-    if operands[1] == operands[0] or operands[0].is_output():
-        intermediate = register("dummy")
-        intermediate.mark_to_be_replaced()
+    if operands[1].name == operands[0].name or operands[0].is_output():
+        intermediate = register("dummy").mark_to_be_replaced()
     
     return _instr['abs'](['abs'], [intermediate, operands[1]]) + _instr['log'](['log'], [intermediate, intermediate]) + _instr['mul'](['mul'], [intermediate, operands[2], intermediate]) + _instr['exp'](['exp'], [operands[0], intermediate])
+
+def _crs(opcode, operands) -> list[instr]:
+    intermediate0 = operands[0].setswizzle("xyz")
+    intermediate1 = register("dummy").mark_to_be_replaced()
+    
+    if operands[0].name == operands[1].name or operands[0].is_output():
+        intermediate0 = register("dummy").mark_to_be_replaced()
+
+    return _instr['mul'](['mul'], [intermediate0, operands[1].setswizzle("yzx"), operands[2].setswizzle("zxy")]) + _instr['mul'](['mul'], [intermediate1, operands[1].setswizzle("zxy"), operands[2].setswizzle("yzx")]) + _instr['sub'](['sub'], [operands[0], intermediate0, intermediate1]) 
+
 
 def _sgn(opcode, operands) -> list[instr]:
     return _instr['slt'](['slt'], [operands[2], copy.deepcopy(operands[1]).negate(), operands[1]]) + _instr['slt'](['slt'], [operands[3], operands[1], copy.deepcopy(operands[1]).negate()]) + _instr['sub'](['sub'], [operands[0], operands[2], operands[3]])
@@ -141,7 +148,7 @@ vs_2_0_instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     'abs': lambda opcode, operands: _instr['max'](['max'], [operands[0], operands[1], copy.deepcopy(operands[1]).negate()]),
     'call': lambda opcode, operands: [instr(opcode[0], operands)],
     'callnz': lambda opcode, operands: [instr('callu', [operands[1], operands[0]])],
-    'crs': lambda opcode, operands: (_ for _ in ()).throw(Exception('crs not supported, make sure your compiler is set not to keep macros')),
+    'crs': _crs,
     'else': lambda opcode, operands: [instr('.else')],
     'endif': lambda opcode, operands: [instr('.end')],
     'endloop': lambda opcode, operands: [instr('.end')],

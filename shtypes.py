@@ -1,11 +1,11 @@
+from _typeshed import SliceableBuffer
 from enum import Enum
 
 class register:
-    n: int = 0
     negative: bool = False
     name: str = ''
     swizzle: str | None = None
-    tobereplaced: int = 0 # marks as needing to be replaced with free register
+    tobereplaced: bool = False # marks as needing to be replaced with free register
     def __init__(self, reg: str):
         if self.name == 'p0': self.name = 'cmp'
         if len(reg) > 0:
@@ -13,9 +13,9 @@ class register:
             self.negative = (splitreg[0][0] == '-')
             self.name = splitreg[0][self.negative:]
             self.swizzle = splitreg[1] if len(splitreg) == 2 else None
-        self.tobereplaced = 0
+        self.tobereplaced = False
     def __eq__(self, other) -> bool:
-        return self.name == other.name and self.swizzle == other.swizzle
+        return self.name == other.name and self.swizzle == other.swizzle and self.negative == other.negative
     def __str__(self):
         return f'register(negative: {self.negative}, name: {self.name}, swizzle: {self.swizzle}, tobereplaced: {self.tobereplaced})'
     def as_line(self):
@@ -24,8 +24,10 @@ class register:
         self.negative = not self.negative
         return self
     def mark_to_be_replaced(self):
-        register.n += 1
-        self.tobereplaced = register.n
+        self.tobereplaced = True
+        return self
+    def setswizzle(self, swizzle):
+        self.swizzle = swizzle
         return self
     def is_output(self):
         return self.name[0] == 'o'
