@@ -25,7 +25,7 @@ def get_input() -> tuple[bool, list[str], str]:
     return (False, [], args.input if args.input is not None else "<stdin>")
 
 
-def printline(line = ''):
+def printline(line: str | list[str] = ''):
     global output
     if isinstance(line, str): print(line.lstrip(), file=output)
     elif isinstance(line, list): [print(str(l).lstrip(), file=output) for l in line]

@@ -74,6 +74,8 @@ def parseshader(shader, version) -> shader:
     return shaderparsers[version](shader)
 
 def fixupshader(input: shader) -> shader:
+    firstproc: bool = True
+    
     for (index, instruction) in enumerate(input.body):
         # replace marked registers
         for (opid, reg) in enumerate(instruction.operands):
@@ -82,60 +84,54 @@ def fixupshader(input: shader) -> shader:
                 reg.tobereplaced = False
                 reg.name = freereg.name
         
-        # fix ret instructions (since they're kinda multi line instructions)
-        if instruction.opcode[0] == 'ret':
-            # if ret is followed by a label then that should be a jmp instruction instead
-            # if not then it's an `end` instruction (plus a .end instruction) (not doing this rn because i'm not sure how to distinguish a normal label and a subroutine)
-            if index+1 < len(input.body):
-                nextinstr = input.body[index+1]
-                if nextinstr.opcode[0] == 'label':
-                    input.body[index] = instr(['jmp'], nextinstr.operands)
-                    del input.body[index+1]
-                else:
-                    input.body[index] = instr(['end'])
-            else:
-                input.body[index] = instr(['end'])
-                #     input.body.insert(index+1, instr(['.end']))
-        # any remaining label instructions are defining processes
-        if instruction.opcode[0] == 'label':
-            input.body[index] = instr([f'{instruction.operands[0].as_line()}:'])
+        # procedure related instructions
+        if instruction.opcode[0] == 'proc':
+            if instruction.opcode[1] == 'start': # label instruction
+                input.body[index] = instr(['.proc'], instruction.operands)
+            if instruction.opcode[1] == 'end': # ret instruction
+                input.body[index] = instr(['.end'])
+                if firstproc:
+                    input.body.insert(index, instr(['end']))
+                    firstproc = False
 
-    # if there's no end instruction at the end of the shader then include it here
-    # also, we're kinda pretending there's no subroutines since fxc doesn't seem to output them and so I don't really know what they look like
-    # so i'm not actually using this yet
-    # if sum([instr.opcode[0] == 'end' for instr in input.body]) < 1:
-    #     input.body += [instr(['end']), instr(['.end'])]
+    # if there's no end instruction in the shader then add it here
+    if len(input.body) < 1 or input.body[-1].opcode[0] != '.end':
+        # there's no ret instruction, so we need to manually indicate the end of the shader
+        input.body += [
+            instr(['end']),
+            instr(['.end'])
+        ]
+    
+    # add entrypoint definition based on shader type
+    input.body.insert(0, instr(['.entry'], [register(f'{['v', 'g'][input.header.type.value]}main')]))
+    input.body.insert(1, instr(['.proc'], [register(f'{['v', 'g'][input.header.type.value]}main')]))
+    
     return input
 
-def outputshader(shader) -> None:
+def outputshader(sh: shader) -> None:
     # print file info
     
-    inout.printline(comment(f'DirectX Shader Model: {['vs_', 'gs_'][shader.header.type.value]}{shader.header.version}'))
+    inout.printline(comment(f'DirectX Shader Model: {['vs_', 'gs_'][sh.header.type.value]}{sh.header.version}'))
     inout.printline()
     
     # print header
     inout.printline(comment("Uniforms"))
-    [inout.printline(unif.as_instr()) for unif in shader.header.uniforms]
+    [inout.printline(unif.as_instr()) for unif in sh.header.uniforms]
     inout.printline()
     
     inout.printline(comment("Constants"))
-    [inout.printline(unif.as_instr()) for unif in shader.header.constants]
+    [inout.printline(unif.as_instr()) for unif in sh.header.constants]
     inout.printline()
     
     inout.printline(comment("Outputs"))
-    inout.printline(shader.header.outputs.as_instr())
+    inout.printline(sh.header.outputs.as_instr())
     inout.printline()
     
     # print body
     
     inout.printline(comment("Main Body"))
+    inout.printline([instr.as_line() for instr in sh.body])
     
-    inout.printline('.proc main')
-    
-    inout.printline([instr.as_line() for instr in shader.body])
-    
-    inout.printline('end')
-    inout.printline('.end')
     inout.printline()
     
     # Ending info

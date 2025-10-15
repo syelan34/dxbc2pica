@@ -41,12 +41,6 @@ if b0
 ---------------
 ifu b0
 ===============
-label instruction
-===============
-label l0
----------------
-l0:
-===============
 loop instruction
 ===============
 loop a0, i0
@@ -58,16 +52,3 @@ rep instruction
 rep i0
 ---------------
 for i0
-===============
-ret instruction -- on its own
-===============
-ret
----------------
-end
-===============
-ret instruction -- followed by label
-===============
-ret
-label l0
----------------
-jmp l0

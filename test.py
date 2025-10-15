@@ -111,6 +111,8 @@ def getresultwithversion(t, version) -> _testresult:
     result.correct = t.input
     
     parsedshader = parser.parseshader(t.input, version)
+    # remove the start and end procedure stuff since we aren't doing a whole shader we just want to test shaders
+    parsedshader.body = parsedshader.body[2:len(parsedshader.body)-2]
     
     for i, instruction in enumerate(parsedshader.body):
         if i >= len(t.expected) or instruction != t.expected[i]:
