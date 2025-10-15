@@ -2,6 +2,7 @@ import parser
 from typing import Callable
 from shtypes import *
 import parsers.vs_2_x as vs_2_x
+import parsers.vs_1_1 as vs_1_1
 
 def unifparse(line: str) -> uniform:
     unif = uniform()
@@ -15,45 +16,25 @@ def unifparse(line: str) -> uniform:
     unif.size = int(parts[2])
     unif.name = parts[0]
     return unif
-    
-def headerparse(lines: list[str]) -> shader_header:
-    header: shader_header = shader_header()
-    # set uniforms
-    uniflines = lines[lines.index("Registers:")+3:]
-    header.uniforms = [unifparse(line) for line in uniflines]
-    return header
 
 def bodyparse(lines: list[str], outshader) -> None:
     shader.body = []
     for line in lines:
-        components = line.replace(',', '').split()
-        opcode = components[0].split("_")
-        operands = components[1:]
-        opbase = [op.split('.')[0] for op in operands]
-        for op in opbase:
-            if op in _outputstoname:
-                setattr(outshader.header.outputs, _outputstoname[op], op)
+        instr = parser.toinstr(line)
+        for op in instr.operands:
+            if op.name in _outputstoname:
+                setattr(outshader.header.outputs, _outputstoname[op.name], op.name)
         # add a line to properly declare outputs the line before (if there are any)
-        shader.body += _instr[opcode[0]](opcode, [register(op) for op in operands])
+        shader.body += _instr[instr.opcode[0]](instr.opcode, instr.operands)
 
 def _parsedcl(opcode, operands, header: shader_header) -> None:
-    if ('s' in operands[0]):
+    if ('s' in operands[0].name):
         raise Exception("Texture samplers not supported")
         
     if opcode[1] in _outputstoname:
-        setattr(header.outputs, _outputstoname[opcode[1]], operands[0])
+        setattr(header.outputs, _outputstoname[opcode[1]], operands[0].name)
     else:
         raise Exception(f'Invalid Output {'_'.join(opcode)}')
-
-def addconstant(opcode, operands, out: shader_header):
-    unif: constantunif = constantunif()
-    unif.id = operands[0][1:]
-    unif.values = operands[1:]
-    match opcode[0]:
-        case 'def': unif.type = uniftype.FLOAT_UNIF
-        case 'defb': unif.type = uniftype.BOOL_UNIF
-        case 'defi': unif.type = uniftype.INT_UNIF
-    out.constants += [unif]
 
 def vs(opcode, operands, out):
     out.type = shadertype.VERTEX_SHADER
@@ -64,16 +45,14 @@ def setupparse(out: shader_header, lines):
     setupinstr = {
         'vs': vs,
         'dcl': _parsedcl,
-        'def': addconstant,
-        'defb': addconstant,
-        'defi': addconstant,
+        'def': vs_1_1.addconstant,
+        'defb': vs_1_1.addconstant,
+        'defi': vs_1_1.addconstant,
     }
     
     for line in lines:
-        components = line.replace(',', '').split()
-        opcode = components[0].split("_")
-        operands = components[1:]
-        setupinstr[opcode[0]](opcode, operands, out)
+        instr = parser.toinstr(line)
+        setupinstr[instr.opcode[0]](instr.opcode, instr.operands, out)
 
 def shaderparse(sh) -> shader:
     out = shader()
@@ -90,7 +69,7 @@ def shaderparse(sh) -> shader:
             body = body[body.index(line):]
             break
     
-    out.header = headerparse(header)
+    out.header = vs_1_1.headerparse(header)
     setupparse(out.header, setup)
     bodyparse(body, out) # also includes header because in this version, outputs are only declared by instructions
     

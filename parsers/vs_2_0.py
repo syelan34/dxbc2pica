@@ -21,61 +21,20 @@ def unifparse(line: str) -> uniform:
     unif.size = int(parts[2])
     unif.name = parts[0]
     return unif
-    
-def headerparse(lines: list[str]) -> shader_header:
-    header: shader_header = shader_header()
-    # set uniforms
-    uniflines = lines[lines.index("Registers:")+3:]
-    header.uniforms = [unifparse(line) for line in uniflines]
-    return header
 
 def bodyparse(lines: list[str], outshader) -> None:
     shader.body = []
     for line in lines:
-        components = line.replace(',', '').split()
-        opcode = components[0].split("_")
-        operands = components[1:]
-        opbase = [op.split('.')[0] for op in operands]
-        for op in opbase:
-            if op in _outputstoname:
-                setattr(outshader.header.outputs, _outputstoname[op], op)
+        instr = parser.toinstr(line)
+        for op in instr.operands:
+            if op.name in _outputstoname:
+                setattr(outshader.header.outputs, _outputstoname[op.name], op.name)
         # add a line to properly declare outputs the line before (if there are any)
-        shader.body += _instr[opcode[0]](opcode, [register(op) for op in operands])
-
-def _parsedcl(opcode, operands, header: shader_header) -> None: 
-    if (opcode[1] == 'texcoord'): opcode[1] += '0'
-    # in vs1_1 only inputs are listed with dcl, outputs are only listed when used
-    header.inputs += [f'.in {opcode[1]} {operands[0]}']
-
-def addconstant(opcode, operands, out: shader_header):
-    unif: constantunif = constantunif()
-    unif.id = operands[0][1:]
-    unif.values = operands[1:]
-    match opcode[0]:
-        case 'def': unif.type = uniftype.FLOAT_UNIF
-        case 'defb': unif.type = uniftype.BOOL_UNIF
-        case 'defi': unif.type = uniftype.INT_UNIF
-    out.constants += [unif]
+        shader.body += _instr[instr.opcode[0]](instr.opcode, instr.operands)
 
 def vs(opcode, operands, out):
     out.type = shadertype.VERTEX_SHADER
     out.version = '2_0'
-
-def setupparse(out: shader_header, lines):
-    # set constant, inputs, outputs from the setup stuff
-    setupinstr = {
-        'vs': vs,
-        'dcl': _parsedcl,
-        'def': addconstant,
-        'defb': addconstant,
-        'defi': addconstant,
-    }
-    
-    for line in lines:
-        components = line.replace(',', '').split()
-        opcode = components[0].split("_")
-        operands = components[1:]
-        setupinstr[opcode[0]](opcode, operands, out)
 
 def shaderparse(sh) -> shader:
     out = shader()
@@ -93,15 +52,11 @@ def shaderparse(sh) -> shader:
             body = body[body.index(line):]
             break
     
-    out.header = headerparse(header)
-    setupparse(out.header, setup)
+    out.header = vs_1_1.headerparse(header)
+    vs_1_1.setupparse(out.header, setup)
     bodyparse(body, out) # also includes header because in this version, outputs are only declared by instructions
     
     return out
-
-
-def _type1u(opcode, operands: list[register]) -> list[instr]:
-    return [instr(opcode[0], operands)]
     
 def _lrp(opcode, operands: list[register]) -> list[instr]:
     intermediate: register = operands[0]
@@ -119,8 +74,6 @@ def _nrm(opcode, operands) -> list[instr]:
         intermediate = register("dummy").mark_to_be_replaced()
         
     return _instr['dp4'](['dp4'], [intermediate, operands[1], operands[1]]) + _instr['rsq'](['rsq'], [intermediate, intermediate]) + _instr['mul'](['mul'], [operands[0], operands[1], intermediate])    
-
-
 
 # from Microsoft's documentation (https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/pow---vs)
 def _pow(opcode, operands) -> list[instr]:
@@ -145,23 +98,23 @@ def _sgn(opcode, operands) -> list[instr]:
 
 vs_2_0_instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     'abs': lambda opcode, operands: _instr['max'](['max'], [operands[0], operands[1], copy.deepcopy(operands[1]).negate()]),
-    'call': lambda opcode, operands: [instr(opcode[0], operands)],
-    'callnz': lambda opcode, operands: [instr('callu', [operands[1], operands[0]])],
+    'call': lambda opcode, operands: [instr([opcode[0]], operands)],
+    'callnz': lambda opcode, operands: [instr(['callu'], [operands[1], operands[0]])],
     'crs': _crs,
-    'else': lambda opcode, operands: [instr('.else')],
-    'endif': lambda opcode, operands: [instr('.end')],
-    'endloop': lambda opcode, operands: [instr('.end')],
-    'endrep': lambda opcode, operands: [instr('.end')],
-    'if': lambda opcode, operands: _type1u(['ifu'], operands),
-    'label': lambda opcode, operands: [instr(operands[0].name)],
-    'loop': lambda opcode, operands: [instr('for', [operands[1]])],
+    'else': lambda opcode, operands: [instr(['.else'])],
+    'endif': lambda opcode, operands: [instr(['.end'])],
+    'endloop': lambda opcode, operands: [instr(['.end'])],
+    'endrep': lambda opcode, operands: [instr(['.end'])],
+    'if': lambda opcode, operands: vs_1_1._type1u(['ifu'], operands),
+    'label': lambda opcode, operands: [instr(opcode,operands)],
+    'loop': lambda opcode, operands: [instr(['for'], [operands[1]])],
     'lrp': _lrp,
-    'mov': _type1u,
-    'mova': _type1u,
+    'mov': vs_1_1._type1u,
+    'mova': vs_1_1._type1u,
     'nrm': _nrm,
     'pow': _pow,
-    'rep': lambda opcode, operands: [instr('for', [operands[0]])],
-    'ret': lambda opcode, operands: [instr('jmp')], # incomplete instruction, must be followed by a label
+    'rep': lambda opcode, operands: [instr(['for'], [operands[0]])],
+    'ret': lambda opcode, operands: [instr(['ret'])],
     # #TODO: use 4 instruction version in case of uniform instead of the autogenerated 5 using movs
     'sgn': _sgn,
     'sincos': lambda opcode, operands: (_ for _ in ()).throw(Exception('sincos not supported')),

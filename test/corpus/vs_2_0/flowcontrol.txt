@@ -1,0 +1,73 @@
+===============
+call instruction
+===============
+call l0
+---------------
+call l0
+===============
+callnz instruction
+===============
+callnz l0, b0
+---------------
+callu b0, l0
+===============
+else instruction
+===============
+else
+---------------
+.else
+===============
+endif instruction
+===============
+endif
+---------------
+.end
+===============
+endloop instruction
+===============
+endloop
+---------------
+.end
+===============
+endrep instruction
+===============
+endrep
+---------------
+.end
+===============
+if instruction
+===============
+if b0
+---------------
+ifu b0
+===============
+label instruction
+===============
+label l0
+---------------
+l0:
+===============
+loop instruction
+===============
+loop a0, i0
+---------------
+for i0
+===============
+rep instruction
+===============
+rep i0
+---------------
+for i0
+===============
+ret instruction -- on its own
+===============
+ret
+---------------
+end
+===============
+ret instruction -- followed by label
+===============
+ret
+label l0
+---------------
+jmp l0

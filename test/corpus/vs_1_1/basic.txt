@@ -1,0 +1,51 @@
+===============
+type0 instruction
+===============
+nop
+---------------
+nop
+===============
+type1u instruction
+===============
+mov r0, r0
+---------------
+mov r0, r0
+===============
+type1 instruction -- scratch register
+===============
+dp3 r0, r0, r0
+---------------
+dp3 r0, r0, r0
+===============
+type1 instruction -- uniform register
+===============
+dp3 r0, r0, c0
+dp3 r0, c0, c0
+---------------
+dp3 r0, c0, r0
+mov r0, c0
+dp3 r0, c0, r0
+===============
+type1i instruction -- scratch register
+===============
+slt r0, r0, r0
+---------------
+slt r0, r0, r0
+===============
+type1i instruction -- uniform register
+===============
+slt r0, r0, c0
+slt r0, c1, c2
+---------------
+slt r0, r0, c0
+mov r0, c1
+slt r0, r0, c2
+===============
+type1i instruction -- uniform register and output register
+===============
+slt o0, r0, c0
+slt o0, c1, c2
+---------------
+slt o0, r0, c0
+mov r0, c1
+slt o0, r0, c2

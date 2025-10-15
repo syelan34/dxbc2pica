@@ -3,10 +3,6 @@ from typing import Callable
 from shtypes import *
 import copy
 
-# def clearstate():
-#     for key in _outputsused.keys():
-#         _outputsused[key] = False
-
 def _setoutputused(output: str) -> bool:
     if output in _invalidoutputs: 
         _invalidoutputs[output]()
@@ -25,6 +21,9 @@ def unifparse(line: str) -> uniform:
     
 def headerparse(lines: list[str]) -> shader_header:
     header: shader_header = shader_header()
+    if 'Registers:' not in lines:
+        return header
+
     # set uniforms
     uniflines = lines[lines.index("Registers:")+3:]
     header.uniforms = [unifparse(line) for line in uniflines]
@@ -33,31 +32,28 @@ def headerparse(lines: list[str]) -> shader_header:
 def bodyparse(lines: list[str], outshader) -> None:
     shader.body = []
     for line in lines:
-        components = line.replace(',', '').split()
-        opcode = components[0].split("_")
-        operands = components[1:]
-        opbase = [op.split('.')[0] for op in operands]
-        for op in opbase:
-            if op in _possibleoutputs:
-                if _setoutputused(op): 
+        instr = parser.toinstr(line)
+        for op in instr.operands:
+            if op.name in _possibleoutputs:
+                if _setoutputused(op.name): 
                     continue
-                    raise Exception(f"Output {op} already assigned")
-                setattr(outshader.header.outputs, _outputstoname[op], op)
+                    raise Exception(f"Output {op.name} already assigned")
+                setattr(outshader.header.outputs, _outputstoname[op.name], op.name)
         # add a line to properly declare outputs the line before (if there are any)
-        shader.body += _instr[opcode[0]](opcode, [register(op) for op in operands])
+        shader.body += _instr[instr.opcode[0]](instr.opcode, instr.operands)
 
 def _parsedcl(opcode, operands, header: shader_header) -> None: 
-    if operands[0] in ['2d', 'cube', 'volume', '3d']: # texture samplers
+    if operands[0].name in ['2d', 'cube', 'volume', '3d']: # texture samplers
         raise Exception("Texture samplers not supported")
     
     if (opcode[1] == 'texcoord'): opcode[1] += '0'
     # in vs1_1 only inputs are listed with dcl, outputs are only listed when used
     header.inputs += [f'.in {opcode[1]} {operands[0]}']
 
-def addconstant(opcode, operands, out: shader_header):
+def addconstant(opcode: list[str], operands: list[register], out: shader_header):
     unif: constantunif = constantunif()
-    unif.id = operands[0][1:]
-    unif.values = operands[1:]
+    unif.id = int(operands[0].name[1:])
+    unif.values = [op.name for op in operands[1:]]
     match opcode[0]:
         case 'def': unif.type = uniftype.FLOAT_UNIF
         case 'defb': unif.type = uniftype.BOOL_UNIF
@@ -79,10 +75,8 @@ def setupparse(out: shader_header, lines):
     }
     
     for line in lines:
-        components = line.replace(',', '').split()
-        opcode = components[0].split("_")
-        operands = components[1:]
-        setupinstr[opcode[0]](opcode, operands, out)
+        instr = parser.toinstr(line)
+        setupinstr[instr.opcode[0]](instr.opcode, instr.operands, out)
 
 def shaderparse(sh) -> shader:
     out = shader()
@@ -137,21 +131,28 @@ _invalidoutputs: dict[str, Callable[[], None]] = {
 _possibleoutputs = (list(_outputstoname.keys()) + list(_invalidoutputs.keys()))
 
 def _type1(opcode, operands: list[register]) -> list[instr]:
-    if 'c' in operands[1].name and 'c' in operands[2].name:
-        return [_instr['mov'](['mov'], [operands[0], operands[1]])[0], instr(opcode[0], [operands[0], operands[2], operands[0]])]
+    if operands[1].is_constant() and operands[2].is_constant():
+        intermediate = operands[0]
+        if operands[0].is_output():
+            intermediate = register("dummy").mark_to_be_replaced()
+        return [_instr['mov'](['mov'], [intermediate, operands[2]])[0], instr(opcode, [operands[0], operands[1], intermediate])]
     else:
-        if 'c' in operands[2].name:
-            return [instr(opcode[0], [operands[0], operands[2], operands[1]])]
-        return [instr(opcode[0], operands)]
-        
+        if operands[2].is_constant():
+            return [instr(opcode, [operands[0], operands[2], operands[1]])]
+
+    return [instr(opcode, operands)]
+
 def _type1i(opcode, operands: list[register]) -> list[instr]:
-    if 'c' in operands[1].name and 'c' in operands[2].name:
-        return _instr['mov'](['mov'], [operands[0], operands[1]]) + [instr(opcode[0], [operands[0], operands[2].negate(), operands[0].negate()])]
+    if operands[1].is_constant() and operands[2].is_constant():
+        intermediate = operands[0]
+        if operands[0].is_output():
+            intermediate = register("dummy").mark_to_be_replaced()
+        return _instr['mov'](['mov'], [intermediate, operands[1]]) + [instr(opcode, [operands[0], intermediate, operands[2]])]
     else:
-        return [instr(opcode[0], operands)]
+        return [instr(opcode, operands)]
 
 def _type1u(opcode, operands: list[register]) -> list[instr]:
-    return [instr(opcode[0], operands)]
+    return [instr(opcode, operands)]
     
 def _frc(opcode, operands: list[register]) -> list[instr]:
     intermediate: register = register("dummy")
@@ -162,8 +163,9 @@ def _frc(opcode, operands: list[register]) -> list[instr]:
 
 def _mad(opcode, operands: list[register]) -> list[instr]:
     numconstants = sum([op.is_constant() for op in operands])
-    # if there are no constants or there is a uniform in either src2 or src3 do nothing
-    if numconstants == 0 or (numconstants == 1 and 'c' not in operands[3].name): return [instr('mad', operands)]
+    # if there are no constants or there is a single uniform in either src2 or src3 do nothing
+    # technically this instruction shouldn't be used since mad actually rounds the intermediate value but i'll fix it later
+    if numconstants == 0 or (numconstants == 1 and not operands[1].is_constant()): return [instr(['mad'], operands)]
     
     intermediate: register = operands[0]
     if operands[0].is_output() or operands[0] in operands[1:]:
@@ -189,7 +191,7 @@ _instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     # required because in vs_1_1 the mova instruction doesn't exist so mov is used for both
     'mov': lambda opcode, operands: _type1u(['mova'], operands) if operands[0].is_addressing() else _type1u(opcode, operands),
     'mul': _type1,
-    'nop': lambda opcode, operands: [instr('nop')],
+    'nop': lambda opcode, operands: [instr(['nop'])],
     'rcp': _type1u,
     'rsq': _type1u,
     'sge': _type1i,

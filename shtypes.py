@@ -33,7 +33,7 @@ class register:
     def is_output(self):
         return self.name[0] == 'o'
     def is_constant(self):
-        return self.name[0] == 'c' and self.name is not 'cmp'
+        return self.name[0] == 'c' and self.name != 'cmp'
     def is_scratch(self):
         return self.name[0] == 'r'
     def is_bool(self):
@@ -44,15 +44,17 @@ class register:
         return self.name[0] == 'a'
         
 class instr:
-    opcode: str
+    opcode: list[str]
     operands: list[register]
-    def __init__(self, opcode: str, operands: list[register] = []):
+    def __init__(self, opcode: list[str], operands: list[register] = []):
         self.opcode = opcode
         self.operands = operands
     def __str__(self):
         return f'instr(opcode: {self.opcode}, dest: {self.operands[0] if len(self.operands) > 0 else '<>'}, operands: {[str(reg) for reg in self.operands[1:]]})'
+    def __eq__(self, other) -> bool:
+        return self.opcode == other.opcode and self.operands == other.operands
     def as_line(self) -> str:
-        return f'{self.opcode} {','.join([operand.as_line() for operand in self.operands])}'
+        return f'{self.opcode[0]} {','.join([operand.as_line() for operand in self.operands])}'
     def dest(self) -> register:
         return self.operands[0] if len(self.operands) > 0 else register('')
 

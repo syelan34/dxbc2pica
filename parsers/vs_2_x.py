@@ -100,9 +100,9 @@ def shaderparse(sh) -> shader:
     
 def _parseif(opcode, operands) -> list[instr]:
     if len(opcode) == 1: 
-        if 'p' in operands[0]: return [instr('ifc', [operands[0].replace('p0', 'cmp')])]
-        else: return [instr('ifu', operands)]#[f'ifu {operands[0]}\n']
-    return [instr('cmp', [operands[0], opcode[1], opcode[1], operands[1]]), instr('ifc', 'cmp.x')]
+        if 'p' in operands[0]: return [instr(['ifc'], [operands[0].replace('p0', 'cmp')])]
+        else: return [instr(['ifu'], operands)]#[f'ifu {operands[0]}\n']
+    return [instr(['cmp'], [operands[0], opcode[1], opcode[1], operands[1]]), instr(['ifc'], ['cmp.x'])]
 
 def _parsesetp(opcode, operands: list[register]) -> list[instr]:
     _oppositecmp = {
@@ -114,14 +114,14 @@ def _parsesetp(opcode, operands: list[register]) -> list[instr]:
         'ge': 'le'
     }
     if 'c' in operands[1].name or 'c' in operands[2].name:
-        return [instr('cmp', [operands[2], register(_oppositecmp[opcode[1]]), register(_oppositecmp[opcode[1]]), operands[1]])]
-    return [instr('cmp', [operands[1], opcode[1], opcode[1], operands[2]])]
+        return [instr(['cmp'], [operands[2], register(_oppositecmp[opcode[1]]), register(_oppositecmp[opcode[1]]), operands[1]])]
+    return [instr(['cmp'], [operands[1], opcode[1], opcode[1], operands[2]])]
 
 def _parsebreak(opcode, operands) -> list[instr]:
     if len(opcode) == 1:
-        return [instr('break')]
+        return [instr(['break'])]
     else:
-        return _instr['setp'](['setp'], [operands[0], operands[1]]) + [instr('breakc', [register('cmp.x')])]
+        return _instr['setp'](['setp'], [operands[0], operands[1]]) + [instr(['breakc'], [register('cmp.x')])]
 
 # yet to implement:
 # lit - vs
@@ -135,8 +135,8 @@ def _parsebreak(opcode, operands) -> list[instr]:
 
 vs_2_x_instr: dict[str, Callable[[list[str], list[register]], list[instr]]] = {
     'break': _parsebreak,
-    'breakp': lambda opcode, operands: [instr('breakc', [operands[0]])],
-    'callnz': lambda opcode, operands: [instr('call' + 'u' if operands[1].is_bool() else 'c', [operands[1], operands[0]])],
+    'breakp': lambda opcode, operands: [instr(['breakc'], [operands[0]])],
+    'callnz': lambda opcode, operands: [instr(['call' + 'u' if operands[1].is_bool() else 'c'], [operands[1], operands[0]])],
     'if': _parseif,
     'setp': _parsesetp,
 }
